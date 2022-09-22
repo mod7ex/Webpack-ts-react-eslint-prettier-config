@@ -1,0 +1,11 @@
+[development]
+last 1 chrome version
+last 1 firefox version
+
+[production]
+ie 11
+> 0.25%
+not dead
+
+[ssr]
+node 16
