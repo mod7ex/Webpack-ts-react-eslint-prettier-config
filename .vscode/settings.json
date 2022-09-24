@@ -1,5 +1,8 @@
 {
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "editor.formatOnSave": true,
-  "prettier.tabWidth": 4
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
+    "prettier.tabWidth": 4,
+    "html.format.wrapLineLength": 120,
+    "editor.wordWrap": "off",
+    "editor.wrappingIndent": "indent"
 }

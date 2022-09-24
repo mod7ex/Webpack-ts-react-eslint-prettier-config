@@ -1,9 +1,11 @@
 import { resolve, join } from "path";
 import webpack from "webpack";
-import "webpack-dev-server";
 import HtmlWebpackPlugin from "html-webpack-plugin";
 import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
 import MiniCssExtractPlugin from "mini-css-extract-plugin";
+import ReactRefreshWebpackPlugin from "@pmmmwh/react-refresh-webpack-plugin";
+import ForkTsCheckerWebpackPlugin from "fork-ts-checker-webpack-plugin";
+import "webpack-dev-server";
 
 const mode = process.env.NODE_ENV as webpack.Configuration["mode"];
 
@@ -15,7 +17,7 @@ const ROOT_PATH = process.cwd();
 type WebpackENV = { WEBPACK_SERVE: boolean };
 type ARGV = Record<string, any> & { env: WebpackENV };
 
-// style files regexes
+// regexes
 const tsJsTsxJsxRegex = /\.((t|j)sx?)?$/;
 const sassRegex = /\.s[ac]ss$/i;
 
@@ -31,7 +33,13 @@ export default (env: WebpackENV, argv: ARGV): webpack.Configuration => {
             favicon: resolve(ROOT_PATH, "public", "favicon.ico"),
         }),
         IS_MODE.DEV && new BundleAnalyzerPlugin(),
-        IS_MODE.PROD && new MiniCssExtractPlugin(),
+        IS_MODE.DEV && new ReactRefreshWebpackPlugin(),
+        IS_MODE.DEV && new ForkTsCheckerWebpackPlugin(),
+
+        IS_MODE.PROD &&
+            new MiniCssExtractPlugin({
+                filename: "[name]-[contenthash]-bundel.css",
+            }),
     ].filter(Boolean) as webpack.Configuration["plugins"];
 
     return {
@@ -39,11 +47,9 @@ export default (env: WebpackENV, argv: ARGV): webpack.Configuration => {
 
         target: ["browserslist"],
 
-        stats: "errors-warnings",
-
         entry: [resolve(ROOT_PATH, "config", "index.ts")],
 
-        devtool: IS_MODE.PROD ? false : IS_MODE.DEV && "cheap-module-source-map", // 'source-map'
+        devtool: IS_MODE.PROD ? false : IS_MODE.DEV && "source-map", // 'cheap-module-source-map'
 
         output: {
             filename: "[name]-[fullhash]-bundel.js",
@@ -85,7 +91,7 @@ export default (env: WebpackENV, argv: ARGV): webpack.Configuration => {
         devServer: {
             static: false,
 
-            port: 9000,
+            port: 8080,
 
             hot: true,
 
@@ -96,7 +102,7 @@ export default (env: WebpackENV, argv: ARGV): webpack.Configuration => {
 
                 overlay: {
                     errors: true,
-                    warnings: true,
+                    warnings: false,
                 },
             },
         },
