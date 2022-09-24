@@ -3,24 +3,3 @@
 *::after {
     box-sizing: border-box;
 }
-
-:fullscreen {
-    background-color: green;
-}
-
-#root {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto;
-    grid-gap: 50px;
-}
-
-.images {
-    display: flex;
-}
-
-.example {
-    transition: all 0.5s;
-    user-select: none;
-    background: linear-gradient(to bottom, white, black);
-}

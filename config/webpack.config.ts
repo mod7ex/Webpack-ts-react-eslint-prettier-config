@@ -14,16 +14,25 @@ const IS_MODE = { DEV: mode === "development", PROD: mode === "production" };
 const ROOT_PATH = process.cwd();
 // const ROOT_PATH = path.dirname(__dirname);
 
-type WebpackENV = { WEBPACK_SERVE: boolean };
-type ARGV = Record<string, any> & { env: WebpackENV };
-
 // regexes
 const tsJsTsxJsxRegex = /\.((t|j)sx?)?$/;
 const sassRegex = /\.s[ac]ss$/i;
 
 const getStyleLoaders = () => {
-    return [IS_MODE.DEV && "style-loader", IS_MODE.PROD && MiniCssExtractPlugin.loader, "css-loader", "postcss-loader", "sass-loader"].filter(Boolean) as webpack.RuleSetUseItem[];
+
+    const sourceMap = IS_MODE.DEV
+
+    return [
+        IS_MODE.DEV && "style-loader",
+        IS_MODE.PROD && MiniCssExtractPlugin.loader,
+        { loader: "css-loader", options: { sourceMap } },
+        { loader: "postcss-loader", options: { sourceMap } },
+        { loader: "sass-loader", options: { sourceMap } },
+    ].filter(Boolean) as webpack.RuleSetUseItem[];
 };
+
+type WebpackENV = { WEBPACK_SERVE: boolean };
+type ARGV = Record<string, any> & { env: WebpackENV };
 
 export default (env: WebpackENV, argv: ARGV): webpack.Configuration => {
     const plugins = [
@@ -49,7 +58,7 @@ export default (env: WebpackENV, argv: ARGV): webpack.Configuration => {
 
         entry: [resolve(ROOT_PATH, "config", "index.ts")],
 
-        devtool: IS_MODE.PROD ? false : IS_MODE.DEV && "source-map", // 'cheap-module-source-map'
+        devtool: IS_MODE.PROD ? false : IS_MODE.DEV && "source-map",
 
         output: {
             filename: "[name]-[fullhash]-bundel.js",
@@ -89,7 +98,9 @@ export default (env: WebpackENV, argv: ARGV): webpack.Configuration => {
         },
 
         devServer: {
-            static: false,
+            static: {
+                directory: resolve(ROOT_PATH, "public"),
+            },
 
             port: 8080,
 
