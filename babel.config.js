@@ -4,8 +4,7 @@ module.exports = function (api) {
 
     // api.env("production")
 
-    // const presets = ["@babel/preset-env", "@babel/preset-typescript"];
-    const presets = ["@babel/preset-typescript", ["@babel/preset-env", { useBuiltIns: "usage", corejs: 3 }]];
+    const presets = [["@babel/preset-env", { useBuiltIns: "usage", corejs: 3 }], "@babel/preset-typescript"];
 
     return {
         presets,
