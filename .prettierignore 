@@ -1,0 +1,7 @@
+**/.git
+**/node_modules
+**/.vscode
+**/config
+**/public
+*.config.js
+.*

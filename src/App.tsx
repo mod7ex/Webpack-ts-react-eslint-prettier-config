@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState } from 'react';
 
 const App = () => {
     const [count, setCount] = useState(0);
 
-    const foo = "some thing";
+    const foo = 'some thing';
     // const foo: number = "some thing";
 
     return (

@@ -19,105 +19,105 @@ const tsJsTsxJsxRegex = /\.((t|j)sx?)?$/;
 const sassRegex = /\.s[ac]ss$/i;
 
 const getStyleLoaders = () => {
+  const sourceMap = IS_MODE.DEV;
 
-    const sourceMap = IS_MODE.DEV
-
-    return [
-        IS_MODE.DEV && "style-loader",
-        IS_MODE.PROD && MiniCssExtractPlugin.loader,
-        { loader: "css-loader", options: { sourceMap } },
-        { loader: "postcss-loader", options: { sourceMap } },
-        { loader: "sass-loader", options: { sourceMap } },
-    ].filter(Boolean) as webpack.RuleSetUseItem[];
+  // prettier-ignore
+  return [
+    IS_MODE.DEV && "style-loader",
+    IS_MODE.PROD && MiniCssExtractPlugin.loader,
+    { loader: "css-loader", options: { sourceMap } },
+    { loader: "postcss-loader", options: { sourceMap } },
+    { loader: "sass-loader", options: { sourceMap } },
+  ].filter(Boolean) as webpack.RuleSetUseItem[];
 };
 
 type WebpackENV = { WEBPACK_SERVE: boolean };
 type ARGV = Record<string, any> & { env: WebpackENV };
 
 export default (env: WebpackENV, argv: ARGV): webpack.Configuration => {
-    const plugins = [
-        new HtmlWebpackPlugin({
-            title: "My App",
-            template: resolve(ROOT_PATH, "public", "index.html"),
-            favicon: resolve(ROOT_PATH, "public", "favicon.ico"),
-        }),
-        IS_MODE.DEV && new BundleAnalyzerPlugin(),
-        IS_MODE.DEV && new ReactRefreshWebpackPlugin(),
-        IS_MODE.DEV && new ForkTsCheckerWebpackPlugin(),
+  const plugins = [
+    new HtmlWebpackPlugin({
+      title: "My App",
+      template: resolve(ROOT_PATH, "public", "index.html"),
+      favicon: resolve(ROOT_PATH, "public", "favicon.ico"),
+    }),
+    IS_MODE.DEV && new BundleAnalyzerPlugin(),
+    IS_MODE.DEV && new ReactRefreshWebpackPlugin(),
+    IS_MODE.DEV && new ForkTsCheckerWebpackPlugin(),
 
-        IS_MODE.PROD &&
-            new MiniCssExtractPlugin({
-                filename: "[name]-[contenthash]-bundel.css",
-            }),
-    ].filter(Boolean) as webpack.Configuration["plugins"];
+    IS_MODE.PROD &&
+      new MiniCssExtractPlugin({
+        filename: "[name]-[contenthash]-bundel.css",
+      }),
+  ].filter(Boolean) as webpack.Configuration["plugins"];
 
-    return {
-        mode: mode || "development",
+  return {
+    mode: mode || "development",
 
-        target: ["browserslist"],
+    target: ["browserslist"],
 
-        entry: [resolve(ROOT_PATH, "config", "index.ts")],
+    entry: [resolve(ROOT_PATH, "config", "index.ts")],
 
-        devtool: IS_MODE.PROD ? false : IS_MODE.DEV && "source-map",
+    devtool: IS_MODE.PROD ? false : IS_MODE.DEV && "source-map",
 
-        output: {
-            filename: "[name]-[fullhash]-bundel.js",
-            path: resolve(ROOT_PATH, "dist"),
+    output: {
+      filename: "[name]-[fullhash]-bundel.js",
+      path: resolve(ROOT_PATH, "dist"),
+    },
+
+    resolve: {
+      extensions: [".ts", ".js", ".tsx", ".jsx"],
+
+      alias: {
+        "@": resolve(ROOT_PATH, "src", "components"),
+        "~": resolve(ROOT_PATH, "src"),
+      },
+    },
+
+    module: {
+      rules: [
+        {
+          test: tsJsTsxJsxRegex,
+          exclude: /node_modules/,
+          use: "babel-loader",
         },
-
-        resolve: {
-            extensions: [".ts", ".js", ".tsx", ".jsx"],
-
-            alias: {
-                "@": resolve(ROOT_PATH, "src", "components"),
-                "~": resolve(ROOT_PATH, "src"),
-            },
+        {
+          test: sassRegex,
+          exclude: /node_modules/,
+          use: getStyleLoaders(),
         },
-
-        module: {
-            rules: [
-                {
-                    test: tsJsTsxJsxRegex,
-                    exclude: /node_modules/,
-                    use: "babel-loader",
-                },
-                {
-                    test: sassRegex,
-                    exclude: /node_modules/,
-                    use: getStyleLoaders(),
-                },
-                {
-                    test: /\.(?:ico|png|jpe?g|gif)$/i,
-                    type: "asset/resource",
-                },
-                {
-                    test: /\.(woff(2)?|eot|ttf|otf|svg)$/i,
-                    type: "asset/inline",
-                },
-            ],
+        {
+          test: /\.(?:ico|png|jpe?g|gif)$/i,
+          type: "asset/resource",
         },
-
-        devServer: {
-            static: {
-                directory: resolve(ROOT_PATH, "public"),
-            },
-
-            port: 8080,
-
-            hot: true,
-
-            open: true,
-
-            client: {
-                progress: true,
-
-                overlay: {
-                    errors: true,
-                    warnings: false,
-                },
-            },
+        {
+          test: /\.(woff(2)?|eot|ttf|otf|svg)$/i,
+          type: "asset/inline",
         },
+      ],
+    },
 
-        plugins,
-    };
+    devServer: {
+      static: {
+        directory: resolve(ROOT_PATH, "public"),
+      },
+
+      port: 8080,
+
+      hot: true,
+
+      open: true,
+
+      client: {
+        progress: true,
+
+        overlay: {
+          errors: true,
+          warnings: false,
+        },
+      },
+    },
+
+    plugins,
+  };
 };

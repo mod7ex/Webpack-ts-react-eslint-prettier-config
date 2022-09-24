@@ -9,18 +9,18 @@ module.exports = function (api) {
      * check https://github.com/pmmmwh/react-refresh-webpack-plugin#usage
      */
     const plugins = [
-            ['@babel/plugin-transform-runtime', { regenerator: true }],
-            IS_DEV && 'react-refresh/babel'
-        ].filter(Boolean)
+        ['@babel/plugin-transform-runtime', { regenerator: true }],
+        IS_DEV && 'react-refresh/babel',
+    ].filter(Boolean);
 
     const presets = [
-            ["@babel/preset-env", { useBuiltIns: "usage", corejs: 3 }],
-            ["@babel/preset-react", { runtime: "automatic" }],
-            "@babel/preset-typescript"
-        ];
+        ['@babel/preset-env', { useBuiltIns: 'usage', corejs: 3 }],
+        ['@babel/preset-react', { runtime: 'automatic' }],
+        '@babel/preset-typescript',
+    ];
 
     return {
         presets,
-        plugins
+        plugins,
     };
 };
