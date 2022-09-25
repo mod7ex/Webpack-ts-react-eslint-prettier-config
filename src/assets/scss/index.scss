@@ -1,5 +1,3 @@
-*,
-*::before,
-*::after {
-    box-sizing: border-box;
-}
+@use 'base';
+@use 'abstracts' as *;
+@use 'components';

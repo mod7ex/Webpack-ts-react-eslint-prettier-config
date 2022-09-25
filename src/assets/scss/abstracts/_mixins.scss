@@ -1,0 +1,39 @@
+@use 'variables' as *;
+
+/*** Break Points */
+
+@mixin break_point($bp: 0) {
+    @media (min-width: $bp) {
+        @content;
+    }
+}
+
+@mixin xs {
+    @media (min-width: map-get($break_points, 'xs')) {
+        @content;
+    }
+}
+
+@mixin sm {
+    @media (min-width: map-get($break_points, 'sm')) {
+        @content;
+    }
+}
+
+@mixin md {
+    @media (min-width: map-get($break_points, 'md')) {
+        @content;
+    }
+}
+
+@mixin lg {
+    @media (min-width: map-get($break_points, 'lg')) {
+        @content;
+    }
+}
+
+@mixin xl {
+    @media (min-width: map-get($break_points, 'xl')) {
+        @content;
+    }
+}

@@ -1,0 +1,20 @@
+@use '../abstracts/variables' as *;
+
+img {
+    position: relative;
+    min-height: 50px;
+}
+
+img::before {
+    content: attr(alt);
+    display: block;
+    position: absolute;
+    top: -5px;
+    left: 0;
+    height: calc(100% + 10px);
+    width: 100%;
+    // background-color: rgb(230, 230, 230);
+    background-color: $red;
+    border: 2px solid rgb(200, 200, 200);
+    border-radius: 5px;
+}

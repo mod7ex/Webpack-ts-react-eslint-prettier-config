@@ -1,0 +1,14 @@
+@use '../abstracts/variables' as *;
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+}
+
+html {
+    font-size: $edge_font_size;
+    line-height: $edge_line_height;
+}
