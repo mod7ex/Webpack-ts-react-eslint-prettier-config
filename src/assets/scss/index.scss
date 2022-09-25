@@ -1,3 +1,63 @@
 @use 'base';
 @use 'abstracts' as *;
 @use 'components';
+
+body {
+    background-color: black;
+}
+
+// Fade
+.fade-entering {
+    background-color: green;
+
+    opacity: 1;
+    transform: translateX(0);
+    transition: opacity 1000ms, transform 1000ms;
+}
+
+.fade-entered {
+    background-color: yellow;
+
+    opacity: 1;
+}
+
+.fade-exiting {
+    background-color: red;
+
+    opacity: 0;
+    transform: scale(0.9);
+    transition: opacity 1000ms, transform 1000ms;
+}
+
+.fade-exited {
+    background-color: blue;
+
+    opacity: 0;
+    transform: scale(0.9);
+}
+
+.fade-unmounted {
+    background-color: pink;
+}
+
+// Switch
+.switch-enter {
+    opacity: 0;
+}
+
+.switch-exit {
+    opacity: 1;
+}
+
+.switch-enter-active {
+    opacity: 1;
+}
+
+.switch-exit-active {
+    opacity: 0;
+}
+
+.switch-enter-active,
+.switch-exit-active {
+    transition: opacity 1500ms;
+}

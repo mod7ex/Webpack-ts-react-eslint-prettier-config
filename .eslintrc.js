@@ -24,9 +24,11 @@ module.exports = {
     plugins: ['react', '@typescript-eslint', 'prettier'],
 
     rules: {
+        'react/display-name': 'off',
         'react/react-in-jsx-scope': 'off',
         '@typescript-eslint/no-non-null-assertion': 'off',
-        'prettier/prettier': 'error',
+        // 'prettier/prettier': 'error',
+        'prettier/prettier': 'off',
     },
 
     ignorePatterns: ['./config/**/*', './public/**/*', './*.config.js'],

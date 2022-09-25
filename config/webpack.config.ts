@@ -65,7 +65,7 @@ export default (env: WebpackENV, argv: ARGV): webpack.Configuration => {
 
         entry: [resolve(ROOT_PATH, 'config', 'index.ts')],
 
-        devtool: IS_MODE.PROD ? false : IS_MODE.DEV && 'source-map',
+        devtool: IS_MODE.PROD ? false : IS_MODE.DEV && 'inline-source-map',
 
         output: {
             filename: '[name]-[fullhash]-bundel.js',
