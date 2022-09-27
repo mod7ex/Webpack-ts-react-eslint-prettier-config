@@ -3,9 +3,12 @@
 $edge_font_size: calc(16px + (20 - 16) * (100vw - 400px) / (1000 - 400));
 $edge_line_height: calc(23px + (29 - 23) * (100vw - 400px) / (1000 - 400));
 
+/********************* Colors *********************/
 $red: red;
+$blue: blue;
+$white: white;
 
-// Break points
+/********************* Break Points *********************/
 $break_points: (
     'xs': '200px',
     'sm': '480px',
@@ -13,3 +16,7 @@ $break_points: (
     'lg': '960px',
     'xl': '1200px',
 );
+
+/********************* Sizes *********************/
+$p-rem: 3rem;
+$p-em: 3em;

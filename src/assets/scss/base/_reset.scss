@@ -1,14 +1,20 @@
-@use '../abstracts/variables' as *;
-
 *,
 *::before,
 *::after {
     box-sizing: border-box;
     padding: 0;
     margin: 0;
+
+    transition: all 300ms ease-out;
 }
 
 html {
     font-size: $edge_font_size;
     line-height: $edge_line_height;
+}
+
+button {
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
 }

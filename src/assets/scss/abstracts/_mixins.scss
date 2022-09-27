@@ -1,6 +1,4 @@
-@use 'variables' as *;
-
-/*** Break Points */
+/**************** Break Points ****************/
 
 @mixin break_point($bp: 0) {
     @media (min-width: $bp) {
@@ -36,4 +34,34 @@
     @media (min-width: map-get($break_points, 'xl')) {
         @content;
     }
+}
+
+/**************** Flexbox ****************/
+
+@mixin flex($direction: row, $align: center, $justify: center, $gap: 0) {
+    display: flex;
+    flex-direction: $direction;
+    align-items: $align;
+    justify-items: $justify;
+    gap: $gap;
+    @content;
+}
+
+/**************** Box Shadow ****************/
+
+@mixin shadow(
+    $x: 0,
+    $y: 0,
+    $blur: 17px,
+    $spread: 1px,
+    $inset: false,
+    $color: rgba(0, 0, 0, 0.3)
+) {
+    @if $inset {
+        box-shadow: $x $y $blur $spread inset $color;
+    } @else {
+        box-shadow: $x $y $blur $spread $color;
+    }
+
+    @content;
 }

@@ -18,11 +18,7 @@ const ROOT_PATH = process.cwd();
 const tsJsTsxJsxRegex = /\.((t|j)sx?)?$/;
 const sassRegex = /\.s[ac]ss$/i;
 
-/*
-const additionalData =
-    `@import "./src/assets/scss/_utils.scss";` +
-    `@import "./src/assets/scss/_reset.scss";`;
-*/
+const additionalData = `@import "./src/assets/scss/index.scss";`;
 
 const getStyleLoaders = () => {
     const sourceMap = IS_MODE.DEV;
@@ -33,7 +29,7 @@ const getStyleLoaders = () => {
     IS_MODE.PROD && MiniCssExtractPlugin.loader,
     { loader: "css-loader", options: { sourceMap } },
     { loader: "postcss-loader", options: { sourceMap } },
-    { loader: "sass-loader", options: { sourceMap,/* additionalData */ } },
+    { loader: "sass-loader", options: { sourceMap, additionalData } },
   ].filter(Boolean) as webpack.RuleSetUseItem[];
 };
 

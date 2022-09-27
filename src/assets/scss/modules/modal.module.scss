@@ -1,0 +1,50 @@
+.overlay {
+    background-color: hsla(0, 0%, 0%, 0.5);
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    @include flex;
+}
+
+.container {
+    background-color: $white;
+    max-width: 20rem;
+    margin: 0 auto;
+    padding: $p-rem * 0.35;
+    border-radius: 5px;
+    @include shadow;
+}
+
+.confirm {
+    .head {
+        font-weight: bold;
+    }
+
+    .body {
+        margin: 1rem 0;
+    }
+
+    .actions {
+        text-align: right;
+
+        button {
+            border-radius: 5px;
+            color: $white;
+
+            &:first-of-type {
+                background-color: $blue;
+                margin-right: 0.3em;
+            }
+
+            &:last-of-type {
+                background-color: $red;
+            }
+
+            &:hover {
+                opacity: 0.7;
+            }
+        }
+    }
+}
