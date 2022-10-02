@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Modal from '~/components/Modal';
+import Modal from '@/modals/Confirm';
 
 export default function useModal(cb: TFunction, props: React.ComponentProps<typeof Modal>) {
     const [up, setUp] = useState(false);
