@@ -26,6 +26,7 @@ module.exports = {
     rules: {
         'react/react-in-jsx-scope': 'off',
         '@typescript-eslint/no-non-null-assertion': 'off',
+        '@typescript-eslint/no-explicit-any': 'off',
         'react/display-name': 'off', // error
         'prettier/prettier': 'off', // error
     },

@@ -14,16 +14,25 @@ interface Props extends React.DetailedHTMLProps<React.ButtonHTMLAttributes<HTMLB
     label?: string;
 }
 
-type Size = { [K in Sizes]?: boolean };
+type Size = { [K in Sizes]?: true };
 
-const Button: FC<Props & Size> = ({ children, label = 'Click', ...props }) => {
-    const inner_size = props['x-small']
+const Button: FC<Props & Size> = ({
+    children,
+    label = 'Click',
+    'x-small': xSmall,
+    small,
+    medium,
+    large,
+    'x-large': xLarge,
+    ...props
+}) => {
+    const inner_size = xSmall
         ? FontSize['x-small']
-        : props['small']
+        : small
         ? FontSize['small']
-        : props['large']
+        : large
         ? FontSize['large']
-        : props['x-large']
+        : xLarge
         ? FontSize['x-large']
         : FontSize['medium'];
 

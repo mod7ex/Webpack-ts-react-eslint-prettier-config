@@ -1,5 +1,7 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, MutableRefObject, useRef, type FC } from 'react';
 import styles from '~/assets/scss/modules/modal.module.scss';
+import { isFunction } from '~/utils';
+import useEventListener from '~/hooks/useEventListener';
 
 export const TXT = {
     cancel: 'cancel',
@@ -8,30 +10,45 @@ export const TXT = {
     Head: 'Confirm',
 };
 
-export type ModalTXT = typeof TXT;
+export type ModalContent<Init = typeof TXT> = Init extends object
+    ? { [K in keyof Init]: Init[K] | React.ReactNode } | Init
+    : never;
 
 type DivProps = React.DetailedHTMLProps<React.HTMLAttributes<HTMLDivElement>, HTMLDivElement>;
 
 /*
  * Overlay
  */
-export const Overlay = forwardRef<HTMLDivElement, { className?: string } & DivProps>(
-    ({ children, className, ...props }, ref) => (
-        <div ref={ref} className={`${styles.overlay} ${className ?? ''}`} {...props}>
+type OverlayProps = { className?: string; onDismiss?: TFunction } & DivProps;
+
+export const Overlay: FC<OverlayProps> = ({ children, className, onDismiss, ...props }) => {
+    const overlayRef = useRef() as MutableRefObject<HTMLDivElement>;
+
+    useEventListener(
+        'click',
+        (e) => {
+            if (e.target === overlayRef.current && isFunction(onDismiss)) onDismiss();
+        },
+        overlayRef
+    );
+
+    return (
+        <div ref={overlayRef} className={`${styles.overlay} ${className ?? ''}`} {...props}>
             {children}
         </div>
-    )
-);
-
-interface ContainerProps extends DivProps {
-    head?: React.ReactNode;
-    body?: React.ReactNode;
-    actions?: React.ReactNode;
-}
+    );
+};
 
 /*
  * Container
  */
+
+interface ContainerProps extends DivProps {
+    head?: string | React.ReactNode;
+    body?: string | React.ReactNode;
+    actions?: React.ReactNode;
+}
+
 export const Container = forwardRef<HTMLDivElement, { className?: string } & ContainerProps>(
     ({ className, head, body, actions, ...props }, ref) => {
         return (
