@@ -16,20 +16,21 @@ const ROOT_PATH = process.cwd();
 
 // regexes
 const tsJsTsxJsxRegex = /\.((t|j)sx?)?$/;
-const sassRegex = /\.s[ac]ss$/i;
+const stylesRegex = /\.(sa|sc|c)ss$/i;
+const stylesModulRegex = /\.module\.(sa|sc|c)ss$/i; // https://stackoverflow.com/a/71497973/13278193
 
-const additionalData = `@import "./src/assets/scss/index.scss";`;
+const additionalData = `@import "./src/assets/scss/global.scss";`;
 
-const getStyleLoaders = () => {
+const getStyleLoaders = (modules: undefined | true = undefined) => {
     const sourceMap = IS_MODE.DEV;
 
     // prettier-ignore
     return [
-    IS_MODE.DEV && "style-loader",
-    IS_MODE.PROD && MiniCssExtractPlugin.loader,
-    { loader: "css-loader", options: { sourceMap } },
-    { loader: "postcss-loader", options: { sourceMap } },
-    { loader: "sass-loader", options: { sourceMap, additionalData } },
+        IS_MODE.DEV && "style-loader",
+        IS_MODE.PROD && MiniCssExtractPlugin.loader,
+        { loader: "css-loader", options: { importLoaders: 2, sourceMap, modules } },
+        { loader: "postcss-loader", options: { sourceMap } },
+        { loader: "sass-loader", options: { sourceMap, additionalData, } },
   ].filter(Boolean) as webpack.RuleSetUseItem[];
 };
 
@@ -85,9 +86,14 @@ export default (env: WebpackENV, argv: ARGV): webpack.Configuration => {
                     use: 'babel-loader',
                 },
                 {
-                    test: sassRegex,
-                    exclude: /node_modules/,
+                    test: stylesRegex,
+                    exclude: stylesModulRegex,
                     use: getStyleLoaders(),
+                    sideEffects: true,
+                },
+                {
+                    test: stylesModulRegex,
+                    use: getStyleLoaders(true),
                 },
                 {
                     test: /\.(?:ico|png|jpe?g|gif)$/i,
@@ -109,7 +115,7 @@ export default (env: WebpackENV, argv: ARGV): webpack.Configuration => {
 
             hot: true,
 
-            open: true,
+            open: false,
 
             client: {
                 progress: true,

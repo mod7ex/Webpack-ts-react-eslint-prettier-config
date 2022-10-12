@@ -1,7 +1,7 @@
 import React, { forwardRef, MutableRefObject, useRef, type FC } from 'react';
 import styles from '~/assets/scss/modules/modal.module.scss';
-import { isFunction } from '~/utils';
 import useEventListener from '~/hooks/useEventListener';
+import { isFunction } from '~/utils';
 
 export const TXT = {
     cancel: 'cancel',
@@ -10,9 +10,7 @@ export const TXT = {
     Head: 'Confirm',
 };
 
-export type ModalContent<Init = typeof TXT> = Init extends object
-    ? { [K in keyof Init]: Init[K] | React.ReactNode } | Init
-    : never;
+export type ModalContent<Init = typeof TXT> = { [K in keyof Init]: Init[K] | React.ReactNode };
 
 type DivProps = React.DetailedHTMLProps<React.HTMLAttributes<HTMLDivElement>, HTMLDivElement>;
 
@@ -42,7 +40,6 @@ export const Overlay: FC<OverlayProps> = ({ children, className, onDismiss, ...p
 /*
  * Container
  */
-
 interface ContainerProps extends DivProps {
     head?: string | React.ReactNode;
     body?: string | React.ReactNode;

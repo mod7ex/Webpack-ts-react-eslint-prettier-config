@@ -63,3 +63,7 @@ sass/
 ![alt text](./src//assets//img/fs-simpler.png 'font size')
 
 > but in all cases it's not easy to impliment
+
+---
+
+# check https://blog.logrocket.com/managing-dom-components-reactdom/ for modals

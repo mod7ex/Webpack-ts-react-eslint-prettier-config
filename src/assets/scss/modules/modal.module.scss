@@ -15,9 +15,13 @@
     padding: $p-rem * 0.35;
     border-radius: 5px;
     @include shadow;
+
+    max-width: max(500px, 50vw);
+    width: 100%;
 }
 
-.confirm {
+.confirm,
+.form {
     .head {
         font-weight: bold;
     }
