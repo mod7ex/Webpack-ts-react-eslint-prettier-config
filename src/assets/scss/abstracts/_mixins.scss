@@ -49,19 +49,35 @@
 
 /**************** Box Shadow ****************/
 
-@mixin shadow(
-    $x: 0,
-    $y: 0,
-    $blur: 17px,
-    $spread: 1px,
-    $inset: false,
-    $color: rgba(0, 0, 0, 0.3)
-) {
+@mixin shadow($x: 0, $y: 0, $blur: 17px, $spread: 1px, $inset: false, $color: rgba(0, 0, 0, 0.3)) {
     @if $inset {
         box-shadow: $x $y $blur $spread inset $color;
     } @else {
         box-shadow: $x $y $blur $spread $color;
     }
 
+    @content;
+}
+
+/**************** Center ****************/
+
+@mixin center($absolute: false) {
+    @if $absolute {
+        position: absolute;
+        left: 0;
+        right: 0;
+    }
+
+    margin-left: auto;
+    margin-right: auto;
+
+    @content;
+}
+
+/**************** Width flexible ****************/
+
+@mixin max-flex-width($width) {
+    max-width: $width;
+    width: 100%;
     @content;
 }

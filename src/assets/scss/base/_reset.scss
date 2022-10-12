@@ -11,3 +11,9 @@ html {
     font-size: $edge_font_size;
     line-height: $edge_line_height;
 }
+
+ul {
+    li {
+        list-style: none;
+    }
+}

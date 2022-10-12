@@ -1,0 +1,15 @@
+.container {
+    z-index: 100;
+    padding-top: 1em;
+    @include center(true);
+    @include max-flex-width(max(400px, 30vw));
+
+    .toast {
+        background-color: green;
+        color: white;
+        padding: 0.5em 1em;
+        margin-bottom: 1em;
+        border-radius: $radius-lg;
+        @include shadow($blur: 7px);
+    }
+}
