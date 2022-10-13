@@ -1,9 +1,11 @@
 import { configureStore, type ThunkAction, type Action } from '@reduxjs/toolkit';
 import modalReducer from '~/store/slices/modal';
+import toastsReducer from '~/store/slices/toasts';
 
 const store = configureStore({
     reducer: {
         modal: modalReducer,
+        toasts: toastsReducer,
     },
 });
 

@@ -1,7 +1,7 @@
 import { resolve } from 'path';
 import webpack from 'webpack';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
-import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer';
+// import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import ReactRefreshWebpackPlugin from '@pmmmwh/react-refresh-webpack-plugin';
 import ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin';
@@ -45,7 +45,7 @@ export default (env: WebpackENV, argv: ARGV): webpack.Configuration => {
             template: resolve(ROOT_PATH, 'public', 'index.html'),
             favicon: resolve(ROOT_PATH, 'public', 'favicon.ico'),
         }),
-        IS_MODE.DEV && new BundleAnalyzerPlugin(),
+        // IS_MODE.DEV && new BundleAnalyzerPlugin(),
         IS_MODE.DEV && new ReactRefreshWebpackPlugin(),
         IS_MODE.DEV && new ForkTsCheckerWebpackPlugin(),
 

@@ -11,5 +11,26 @@
         margin-bottom: 1em;
         border-radius: $radius-lg;
         @include shadow($blur: 7px);
+        @include flex($justify: space-between);
+
+        i {
+            margin-left: auto;
+            cursor: pointer;
+            border: 2px solid white;
+            border-radius: 50%;
+            position: relative;
+            @include flex();
+            width: 30px;
+            height: 30px;
+
+            span {
+                position: absolute;
+            }
+        }
+
+        .title {
+            margin-right: 0.5em;
+            font-weight: bold;
+        }
     }
 }

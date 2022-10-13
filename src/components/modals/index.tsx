@@ -41,8 +41,8 @@ export const Overlay: FC<OverlayProps> = ({ children, className, onDismiss, ...p
  * Container
  */
 interface ContainerProps extends DivProps {
-    head?: string | React.ReactNode;
-    body?: string | React.ReactNode;
+    head?: React.ReactNode;
+    body?: React.ReactNode;
     actions?: React.ReactNode;
 }
 
