@@ -1,15 +1,15 @@
 import { useAppDispatch } from '~/store/hooks';
-import { add, remove, Toast, TTL } from '~/store/slices/toasts';
-import { queueJob, uuidGen } from '~/utils';
+import { add, Toast, scheduleRemoveThunk } from '~/store/slices/toasts';
+import { uuidGen } from '~/utils';
 
 const uuid = uuidGen();
 
-type RawToast = Omit<Toast, 'id'>;
+type RawToast = Partial<Omit<Toast, 'id'>>;
 
 const useToaster = (payload: RawToast) => {
     const dispatch = useAppDispatch();
 
-    const toast = (on_the_fly_payload?: Partial<RawToast>) => {
+    return (on_the_fly_payload?: RawToast) => {
         const id = uuid();
 
         dispatch(
@@ -20,12 +20,8 @@ const useToaster = (payload: RawToast) => {
             })
         );
 
-        queueJob(() => {
-            dispatch(remove(id));
-        }, payload.ttl ?? TTL);
+        dispatch(scheduleRemoveThunk({ id, ttl: payload.ttl ?? on_the_fly_payload?.ttl }));
     };
-
-    return toast;
 };
 
 export default useToaster;
