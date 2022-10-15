@@ -2,7 +2,7 @@ import { useAppDispatch } from '~/store/hooks';
 import { add, Toast, scheduleRemoveThunk } from '~/store/slices/toasts';
 import { uuidGen } from '~/utils';
 
-const uuid = uuidGen();
+const uuid = uuidGen('toasts');
 
 type RawToast = Partial<Omit<Toast, 'id'>>;
 

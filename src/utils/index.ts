@@ -16,13 +16,33 @@ export const sleep = (_tm = 1000) => {
     });
 };
 
-export const uuidGen = (payload = 'some-random-string') => {
+/**
+ * Fix Type infer issue
+ */
+export type UUID<T extends Numberish> = `uid-${number}-${number}-${T}`;
+export const uuidGen = <T extends Numberish>(payload: T) => {
     let state = 0;
 
-    return () => {
+    return <O extends Numberish | undefined>(on_the_fly_payload?: O) => {
         state++;
-        return `uid-${Date.now()}-${state}-${payload}`;
+        return `uid-${Date.now()}-${state}-${payload ?? on_the_fly_payload}` as UUID<O extends undefined ? T : O>;
     };
+};
+
+export const createAbortion = (timeout: number) => {
+    const controller = new AbortController();
+
+    const id = setTimeout(() => controller.abort(), timeout);
+
+    const clear = () => clearTimeout(id);
+
+    return { controller, clear };
+};
+
+export const is_empty = (v: unknown): v is undefined | [] => {
+    if (v == undefined) return true;
+    if (Array.isArray(v)) return !!v.length;
+    return false;
 };
 
 // const importView = (subreddit: string) => lazy(() => import(`./views/${subreddit}View`).catch(() => import(`./views/NullView`)));

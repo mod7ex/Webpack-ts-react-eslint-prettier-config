@@ -9,6 +9,8 @@ declare global {
 
     declare type TFunction = (...args: any[]) => any;
 
+    type TEmpty = undefined | null;
+
     declare type Numberish = number | string;
 }
 
