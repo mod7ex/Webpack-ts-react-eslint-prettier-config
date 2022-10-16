@@ -20,7 +20,9 @@ const useToaster = (payload: RawToast) => {
             })
         );
 
-        dispatch(scheduleRemoveThunk({ id, ttl: payload.ttl ?? on_the_fly_payload?.ttl }));
+        const ttl = payload.ttl ?? on_the_fly_payload?.ttl;
+
+        dispatch(scheduleRemoveThunk({ id, ttl }));
     };
 };
 

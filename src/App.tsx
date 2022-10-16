@@ -10,11 +10,10 @@ const App = () => {
             path: 'posts',
             timeout: 30000,
             options: {
-                method: 'POST',
-                body: JSON.stringify({
-                    email: 'mod@mod.ma',
-                    password: 'password',
-                }),
+                // body: JSON.stringify({
+                //     email: 'mod@mod.ma',
+                //     password: 'password',
+                // }),
             },
         });
     }, [count]);
