@@ -1,20 +1,16 @@
 import useAsync from './hooks/useAsync';
 import api from '~/helpers/requests';
 import { useState } from 'react';
+import { formattedJSON } from './utils';
 
 const App = () => {
     const [count, setCount] = useState(0);
 
     const { loading, error, value } = useAsync(() => {
-        return api.request({
-            path: 'posts',
+        return api.http.get({
             timeout: 30000,
-            options: {
-                // body: JSON.stringify({
-                //     email: 'mod@mod.ma',
-                //     password: 'password',
-                // }),
-            },
+            path: 'users',
+            options: {},
         });
     }, [count]);
 
@@ -34,10 +30,10 @@ const App = () => {
                 'loading ...'
             ) : (
                 <>
-                    <pre>{JSON.stringify(value)}</pre>
+                    <pre>{formattedJSON(value)}</pre>
                     <br />
                     <br />
-                    <pre>{JSON.stringify(error)}</pre>
+                    <pre>{formattedJSON(error)}</pre>
                 </>
             )}
         </>

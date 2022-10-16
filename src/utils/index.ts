@@ -45,4 +45,8 @@ export const is_empty = (v: unknown): v is undefined | [] => {
     return false;
 };
 
+export const formattedJSON = (v: any) => {
+    return JSON.stringify(v, null, 4);
+};
+
 // const importView = (subreddit: string) => lazy(() => import(`./views/${subreddit}View`).catch(() => import(`./views/NullView`)));

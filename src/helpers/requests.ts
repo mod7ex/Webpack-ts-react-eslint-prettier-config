@@ -14,22 +14,42 @@ const UUID_PAYLOAD = 'api-requests';
 
 const uuid = uuidGen(UUID_PAYLOAD);
 
-const BASE_URL = 'https://jsonplaceholder.typicode.com';
+const BASE_URL = 'https://gorest.co.in/public/v2';
 
 const DEFAULT_TIMEOUT = 3000;
 
-const headers = (content_length: number) => {
+const headers = (options?: object) => {
     return new Headers({
         'Content-Type': 'application/json',
-        'Content-Length': content_length.toString(),
+        // 'Content-Length': options?.body?.toString().length,
     });
 };
 
-const OPTIONS: RequestInit = {
+const OPTIONS: RequestOptions = {
     method: 'GET',
 };
 
 // addEventListener('fetch', (event) => {}); // use it to set a token ...
+
+type OmittedMethodOptions = Omit<RequestInit, 'method'>;
+type OmittedBodyAndMethodOptions = Omit<OmittedMethodOptions, 'body'>;
+type GetRequestOptions = OmittedBodyAndMethodOptions & { method: IActions['GET'] };
+type PostBasedRequestOptions = OmittedBodyAndMethodOptions & {
+    method: Exclude<HttpAction, IActions['GET']>;
+    body?: RequestInit['body'];
+};
+
+type RequestOptions = GetRequestOptions | PostBasedRequestOptions;
+
+interface IRawRequest {
+    base_url?: string;
+    path?: string;
+    timeout?: number;
+}
+
+interface IRequest extends IRawRequest {
+    options?: RequestOptions;
+}
 
 /**
  *
@@ -38,39 +58,15 @@ const OPTIONS: RequestInit = {
  * https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch#supplying_request_options
  *
  */
-
-// interface IRequestOptions<T extends HttpAction> extends Omit<RequestInit, 'body' | 'method'> {
-//     method: T;
-//     body: T extends IActions['GET'] ? never : RequestInit['body'];
-// }
-
-type RequestOptions =
-    | (Omit<RequestInit, 'body' | 'method'> & { method: IActions['GET'] })
-    | (Omit<RequestInit, 'body' | 'method'> & {
-          method: Exclude<HttpAction, IActions['GET']>;
-          body: RequestInit['body'];
-      });
-
-interface IRawRequest {
-    base_url?: string;
-    path?: string;
-    timeout?: number;
-}
-
-interface IRequest<T extends HttpAction> extends IRawRequest {
-    options?: RequestOptions;
-}
-
 type Result<T> = Promise<
     { success: false; error: any; message: string } | { success: true; message: string; data: T; response: Response }
 >;
-
-const request = async <T, M extends HttpAction>({
+const request = async <T>({
     path = '',
     options,
     timeout = DEFAULT_TIMEOUT,
     base_url = BASE_URL,
-}: IRequest<M>): Result<T> => {
+}: IRequest): Result<T> => {
     const end_point = `${base_url}/${path}`;
 
     const { controller, clear } = createAbortion(timeout);
@@ -81,7 +77,7 @@ const request = async <T, M extends HttpAction>({
 
     const _options = {
         signal: controller.signal,
-        headers: headers(options?.body?.toString().length ?? 0),
+        headers: headers(options),
         ...OPTIONS,
         ...options,
     };
@@ -106,8 +102,16 @@ const request = async <T, M extends HttpAction>({
     }
 };
 
+interface ProxiedRequest {
+    ['GET']<T>(payload: IRawRequest & { options: OmittedBodyAndMethodOptions }): Result<T>;
+    ['get']<T>(payload: IRawRequest & { options: OmittedBodyAndMethodOptions }): Result<T>;
+
+    ['POST']<T>(payload: IRawRequest & { options: OmittedMethodOptions }): Result<T>;
+    ['post']<T>(payload: IRawRequest & { options: OmittedMethodOptions }): Result<T>;
+}
+
 class ApiRequest {
-    private queue: (IRequest<HttpAction> & { key: UUID<Numberish> })[] | undefined;
+    private queue: (IRequest & { key: UUID<Numberish> })[] | undefined;
 
     constructor(
         private _name: string = 'random',
@@ -115,16 +119,12 @@ class ApiRequest {
         private timeout: number = 3000
     ) {}
 
-    request<T, M extends HttpAction>(payload: IRequest<M>) {
-        const { base_url, timeout } = this;
-
-        return request<T, M>({ base_url, timeout, ...payload });
+    request<T>(payload: IRequest) {
+        return request<T>({ base_url: this.base_url, timeout: this.timeout, ...payload });
     }
 
-    store<T extends HttpAction>(payload: IRequest<T>, key = uuid()) {
-        const { base_url, timeout } = this;
-
-        (this.queue ?? (this.queue = [])).push({ base_url, timeout, ...payload, key });
+    store(payload: IRequest, key = uuid()) {
+        (this.queue ?? (this.queue = [])).push({ base_url: this.base_url, timeout: this.timeout, ...payload, key });
     }
 
     async resolve(_key: UUID<Numberish>) {
@@ -154,20 +154,13 @@ class ApiRequest {
     }
 
     get http() {
-        return new Proxy(this, {
-            get(target, key: HttpAction) {
-                if (key === 'get') {
-                    return <T>(payload: IRequest<IActions['GET']>) => {
-                        const { base_url, options, path, timeout } = payload;
+        return new Proxy<ProxiedRequest>({} as ProxiedRequest, {
+            get(_, key: HttpAction) {
+                return <T>(payload: IRequest) => {
+                    const { base_url, options, path, timeout } = payload;
 
-                        return target.request<T, IActions['GET']>({
-                            timeout,
-                            path,
-                            base_url,
-                            options: { method: 'GET', ...options },
-                        });
-                    };
-                }
+                    return request<T>({ timeout, path, base_url, options: { method: key, ...options } });
+                };
             },
         });
     }
