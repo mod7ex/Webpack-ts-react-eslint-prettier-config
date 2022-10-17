@@ -1,5 +1,6 @@
 import { createAbortion, is_empty, sleep, uuidGen, type UUID } from '~/utils';
 import logger from './logger';
+// import RequestsMap from '~/helpers/requests-map.json';
 
 interface IActions {
     GET: 'GET' | 'get';
@@ -9,27 +10,6 @@ interface IActions {
 }
 
 type HttpAction = IActions[keyof IActions];
-
-const UUID_PAYLOAD = 'api-requests';
-
-const uuid = uuidGen(UUID_PAYLOAD);
-
-const BASE_URL = 'https://gorest.co.in/public/v2';
-
-const DEFAULT_TIMEOUT = 3000;
-
-const headers = (options?: object) => {
-    return new Headers({
-        'Content-Type': 'application/json',
-        // 'Content-Length': options?.body?.toString().length,
-    });
-};
-
-const OPTIONS: RequestOptions = {
-    method: 'GET',
-};
-
-// addEventListener('fetch', (event) => {}); // use it to set a token ...
 
 type OmittedMethodOptions = Omit<RequestInit, 'method'>;
 type OmittedBodyAndMethodOptions = Omit<OmittedMethodOptions, 'body'>;
@@ -51,6 +31,23 @@ interface IRequest extends IRawRequest {
     options?: RequestOptions;
 }
 
+const UUID_PAYLOAD = 'api-requests';
+const uuid = uuidGen(UUID_PAYLOAD);
+
+const BASE_URL = 'https://gorest.co.in/public/v2';
+const DEFAULT_TIMEOUT = 3000;
+
+const headers = (options?: object) => {
+    return new Headers({
+        'Content-Type': 'application/json',
+        // 'Content-Length': options?.body?.toString().length,
+    });
+};
+
+const DEFAULT_OPTIONS: RequestOptions = {
+    method: 'GET',
+};
+
 /**
  *
  * we use fetch here we can use some other api like axios <package>
@@ -59,9 +56,10 @@ interface IRequest extends IRawRequest {
  *
  */
 type Result<T> = Promise<
-    { success: false; error: any; message: string } | { success: true; message: string; data: T; response: Response }
+    | { success: false; error: any; message: string; key?: RequestKey }
+    | { success: true; message: 'Success !'; data: T; response: Response; key?: RequestKey }
 >;
-const request = async <T>({
+export const request = async <T>({
     path = '',
     options,
     timeout = DEFAULT_TIMEOUT,
@@ -71,99 +69,122 @@ const request = async <T>({
 
     const { controller, clear } = createAbortion(timeout);
 
-    let data: T | TEmpty;
-    let response: Response | TEmpty;
-    let error: TypeError | TEmpty;
-
     const _options = {
         signal: controller.signal,
         headers: headers(options),
-        ...OPTIONS,
+        ...DEFAULT_OPTIONS,
         ...options,
     };
 
     try {
-        response = await fetch(end_point, _options);
+        const response = await fetch(end_point, _options);
 
         if (!response.ok) throw new TypeError('Network response was not OK');
 
-        data = (await response.json()) as T;
+        const data = (await response.json()) as T;
 
         // logger.log(response);
         logger.log(data);
 
         return { data, message: 'Success !', success: true, response };
     } catch (err: any) {
+        const error = err;
+
         logger.error(error);
 
-        return { error: err, message: error?.message ?? 'Something went wrong', success: false };
+        return { error, message: error?.message ?? 'Something went wrong', success: false };
     } finally {
         clear();
     }
 };
 
-interface ProxiedRequest {
-    ['GET']<T>(payload: IRawRequest & { options: OmittedBodyAndMethodOptions }): Result<T>;
-    ['get']<T>(payload: IRawRequest & { options: OmittedBodyAndMethodOptions }): Result<T>;
+type ProxiedRequest = {
+    [Key in HttpAction]: <T>(
+        payload: IRawRequest & {
+            options?: Key extends IActions['GET'] ? OmittedBodyAndMethodOptions : OmittedMethodOptions;
+        }
+    ) => Result<T>;
+};
 
-    ['POST']<T>(payload: IRawRequest & { options: OmittedMethodOptions }): Result<T>;
-    ['post']<T>(payload: IRawRequest & { options: OmittedMethodOptions }): Result<T>;
-}
+type RequestKey = { key: UUID<Numberish>; timestamp: number }; // think about making the key a Symbol
 
-class ApiRequest {
-    private queue: (IRequest & { key: UUID<Numberish> })[] | undefined;
+export class ApiRequest {
+    private weak_map: WeakMap<RequestKey, IRequest> | undefined; // Key Order
 
     constructor(
         private _name: string = 'random',
         private base_url: string = BASE_URL,
-        private timeout: number = 3000
+        private timeout: number = DEFAULT_TIMEOUT
     ) {}
 
-    request<T>(payload: IRequest) {
-        return request<T>({ base_url: this.base_url, timeout: this.timeout, ...payload });
+    prepare_payload(payload: IRequest) {
+        return { base_url: this.base_url, timeout: this.timeout, ...payload };
     }
 
-    store(payload: IRequest, key = uuid()) {
-        (this.queue ?? (this.queue = [])).push({ base_url: this.base_url, timeout: this.timeout, ...payload, key });
+    store(payload: IRequest, key: RequestKey['key']) {
+        const _key = { key, timestamp: Date.now() };
+
+        (this.weak_map ?? (this.weak_map = new Map())).set(_key, this.prepare_payload(payload));
+
+        return _key;
     }
 
-    async resolve(_key: UUID<Numberish>) {
-        if (is_empty(this.queue)) return;
+    get_payload(key: RequestKey) {
+        return this.weak_map?.get(key);
+    }
 
-        const payload = this.queue.find(({ key }) => key === _key);
+    delete_payload(key: RequestKey) {
+        return this.weak_map?.delete(key) ?? false;
+    }
 
-        if (!payload) return;
+    async request<T>(payload: IRequest, key?: RequestKey['key']) {
+        const response = await request<T>(this.prepare_payload(payload));
 
-        const response = await this.request(payload);
-
-        this.queue.removeBy(_key, 'key');
+        if (key) response.key = this.store(payload, key); // if key is provided the payload will be stored
 
         return response;
     }
 
-    async flush(step?: number) {
-        if (is_empty(this.queue)) return;
+    async resolve<T>(_key: RequestKey) {
+        const payload = this.get_payload(_key);
 
-        let payload;
+        if (!payload) return;
 
-        while (this.queue.length) {
-            payload = this.queue.pop();
-            await this.request(payload!);
-            if (!is_empty(this.queue) && step) await sleep(step);
-        }
+        const response = await this.request<T>(payload);
+
+        if (response.success) this.delete_payload(_key);
+
+        return response;
     }
+
+    // flush({ clear = true }) {}
 
     get http() {
         return new Proxy<ProxiedRequest>({} as ProxiedRequest, {
-            get(_, key: HttpAction) {
+            get(_, method: HttpAction) {
                 return <T>(payload: IRequest) => {
                     const { base_url, options, path, timeout } = payload;
-
-                    return request<T>({ timeout, path, base_url, options: { method: key, ...options } });
+                    return request<T>({ timeout, path, base_url, options: { method, ...options } });
                 };
             },
         });
     }
+
+    // get get() {
+    //     return new Proxy<ProxiedRequest>({} as ProxiedRequest, {
+    //         get(_, key: HttpAction) {
+    //             return <T>(payload: IRequest) => {
+    //                 const { base_url, options, path, timeout } = payload;
+    //                 return request<T>({ timeout, path, base_url, options: { method: key, ...options } });
+    //             };
+    //         },
+    //     });
+    // }
 }
+
+addEventListener('fetch', (event) => {
+    // use it to set a token ...
+    console.log(event);
+});
 
 export default new ApiRequest();

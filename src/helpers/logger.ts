@@ -34,6 +34,10 @@ class Logger {
         console.count(msg);
     }
 
+    trace<T extends string | undefined>(msg?: T) {
+        console.trace(msg);
+    }
+
     logs_count() {
         return this.logs.length;
     }

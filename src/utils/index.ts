@@ -1,5 +1,7 @@
 // import { lazy } from 'react';
 
+import { isArray, isMap, isWeakMap } from '~/utils/types';
+
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 export const NOOP = () => {};
 
@@ -41,7 +43,11 @@ export const createAbortion = (timeout: number) => {
 
 export const is_empty = (v: unknown): v is undefined | [] => {
     if (v == undefined) return true;
-    if (Array.isArray(v)) return !!v.length;
+
+    if (isArray(v)) return !!v.length;
+
+    if (isMap(v)) return !!v.size;
+
     return false;
 };
 

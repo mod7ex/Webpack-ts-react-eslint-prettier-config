@@ -10,7 +10,6 @@ const App = () => {
         return api.http.get({
             timeout: 30000,
             path: 'users',
-            options: {},
         });
     }, [count]);
 
