@@ -12,6 +12,8 @@ declare global {
     type TEmpty = undefined | null;
 
     declare type Numberish = number | string;
+
+    declare type NullableNumberish = Numberish | undefined | null;
 }
 
 export {};
