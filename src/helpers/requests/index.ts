@@ -27,6 +27,7 @@ interface IRawRequest {
     path?: string;
     timeout?: number;
     params?: Record<string, Numberish | boolean>;
+    data?: Record<string, Numberish | boolean>;
 }
 
 interface IRequest extends IRawRequest {
