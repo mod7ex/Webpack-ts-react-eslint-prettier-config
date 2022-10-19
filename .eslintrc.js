@@ -27,6 +27,7 @@ module.exports = {
         'react/react-in-jsx-scope': 'off',
         '@typescript-eslint/no-non-null-assertion': 'off',
         '@typescript-eslint/no-explicit-any': 'off',
+        '@typescript-eslint/ban-ts-comment': 'off',
         'react/display-name': 'off', // error
         'prettier/prettier': 'off', // error
     },

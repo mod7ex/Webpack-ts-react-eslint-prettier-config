@@ -1,6 +1,16 @@
 import { type UUID } from '~/utils';
 import logger from '../logger';
+import {
+    createAbortion,
+    uuid,
+    headers as default_headers,
+    payload_to_query,
+    path_join,
+    pick,
+} from '~/helpers/requests/utils';
 import RequestsMap from '~/helpers/requests/requests-map.json';
+
+/* ******************************************************************************************************************** */
 
 interface IMethods {
     GET: 'GET' | 'get';
@@ -11,52 +21,21 @@ interface IMethods {
 
 type HttpMethod = IMethods[keyof IMethods];
 
-type OmittedMethodOptions = Omit<RequestInit, 'method'>;
-type OmittedBodyAndMethodOptions = Omit<OmittedMethodOptions, 'body'>;
+type RequestKey = { key: UUID<Numberish, Numberish>; timestamp: number }; // think about making the key a Symbol
 
-type GetRequestOptions = OmittedBodyAndMethodOptions & { method: IMethods['GET'] };
-type PostBasedRequestOptions = OmittedBodyAndMethodOptions & {
-    method: Exclude<HttpMethod, IMethods['GET']>;
-    body?: RequestInit['body'];
-};
+type TData = NonNullable<RequestInit['body']>;
 
-type RequestOptions = GetRequestOptions | PostBasedRequestOptions;
-
-interface IRawRequest {
+interface IRawRequest<M extends HttpMethod> {
     base_url?: string;
     path?: string;
     timeout?: number;
     params?: Record<string, Numberish | boolean>;
-    data?: Record<string, Numberish | boolean>;
+    key?: RequestKey['key'];
+    options?: RequestInit;
+    method?: M;
 }
 
-interface IRequest extends IRawRequest {
-    options?: RequestOptions;
-}
-
-/* ******************************************************************************************************************** */
-
-let weak_map: WeakMap<RequestKey, IRequest> | undefined; // Key Order
-
-const store_request = (payload: IRequest, key: RequestKey['key']) => {
-    const _key = { key, timestamp: Date.now() };
-
-    (weak_map ?? (weak_map = new Map())).set(_key, payload);
-
-    return _key;
-};
-
-const get_request = (key: RequestKey) => {
-    return weak_map?.get(key);
-};
-
-const delete_request = (key: RequestKey) => {
-    return weak_map?.delete(key) ?? false;
-};
-
-const prepare_request = (payload: IRequest) => {
-    return { base_url: DEFAULTS.BASE_URL, timeout: DEFAULTS.TIMEOUT, ...payload } as IRequest;
-};
+type RawRequest = IRawRequest<IMethods['GET']> | (IRawRequest<Exclude<HttpMethod, IMethods['GET']>> & { data?: TData });
 
 /* ******************************************************************************************************************** */
 
@@ -65,15 +44,28 @@ enum DEFAULTS {
     TIMEOUT = 3000,
 }
 
-const headers = (options?: object) => {
-    return new Headers({
-        'Content-Type': 'application/json',
-        // 'Content-Length': options?.body?.toString().length,
-    });
+/* ******************************************************************************************************************** */
+
+let requestsMap: WeakMap<RequestKey, RawRequest> | undefined; // Key Order
+
+const store_request = (payload: RawRequest, key: RequestKey['key'] = uuid()) => {
+    const _key = { key, timestamp: Date.now() };
+
+    (requestsMap ?? (requestsMap = new Map())).set(_key, payload);
+
+    return _key;
 };
 
-const DEFAULT_OPTIONS: RequestOptions = {
-    method: 'GET',
+const get_request = (key: RequestKey) => {
+    return requestsMap?.get(key);
+};
+
+const delete_request = (key: RequestKey) => {
+    return requestsMap?.delete(key) ?? false;
+};
+
+const prepare_request = (payload: RawRequest) => {
+    return { base_url: DEFAULTS.BASE_URL, timeout: DEFAULTS.TIMEOUT, ...payload } as RawRequest;
 };
 
 /* ******************************************************************************************************************** */
@@ -86,39 +78,46 @@ const DEFAULT_OPTIONS: RequestOptions = {
  *
  */
 
-export const createAbortion = (timeout: number) => {
-    const controller = new AbortController();
+type Result<T, E = any, P extends (keyof T)[] = []> =
+    | { success: false; error: E; message: string; key?: RequestKey }
+    | { success: true; message: 'Success !'; data: T | Pick<T, P[number]>; response: Response; key?: RequestKey };
 
-    const id = setTimeout(() => controller.abort(), timeout);
+export const request = async <T extends object, E, P extends (keyof T)[] = []>(
+    payload: RawRequest,
+    pick_keys?: P
+): Promise<Result<T, E, P>> => {
+    const { method, base_url, path, timeout, params, key, options } = payload;
 
-    const clear = () => clearTimeout(id);
+    const end_point = path_join(base_url ?? DEFAULTS.BASE_URL, path ?? '');
 
-    return { controller, clear };
-};
+    const query = params ? payload_to_query(params) : '';
 
-type Result<T> = Promise<
-    | { success: false; error: any; message: string; key?: RequestKey }
-    | { success: true; message: 'Success !'; data: T; response: Response; key?: RequestKey }
->;
-export const request = async <T>({
-    path = '',
-    options,
-    timeout = DEFAULTS.TIMEOUT,
-    base_url = DEFAULTS.BASE_URL,
-}: IRequest): Result<T> => {
-    const end_point = `${base_url}/${path}`;
+    const { controller, clear } = createAbortion(timeout ?? DEFAULTS.TIMEOUT);
 
-    const { controller, clear } = createAbortion(timeout);
+    let _key;
 
-    const _options = {
+    if (key) {
+        // store the original payload
+        _key = store_request(payload);
+    }
+
+    const headers = {
+        ...default_headers(options),
+        ...options?.headers,
+    };
+
+    const _options: RequestInit = {
+        // keep same order !
         signal: controller.signal,
-        headers: headers(options),
-        ...DEFAULT_OPTIONS,
+        method: method ?? 'GET',
+        // @ts-ignore
+        body: payload?.data,
         ...options,
+        headers,
     };
 
     try {
-        const response = await fetch(end_point, _options);
+        const response = await fetch(end_point + query, _options);
 
         if (!response.ok) throw new TypeError('Network response was not OK');
 
@@ -127,23 +126,21 @@ export const request = async <T>({
         // logger.log(response);
         logger.log(data);
 
-        return { data, message: 'Success !', success: true, response };
+        return { data: pick<T, P>(data, pick_keys ?? []), message: 'Success !', success: true, response, key: _key };
     } catch (err: any) {
         const error = err;
 
         logger.error(error);
 
-        return { error, message: error?.message ?? 'Something went wrong', success: false };
+        return { error, message: error?.message ?? 'Something went wrong', success: false, key: _key };
     } finally {
         clear();
     }
 };
 
-type RequestKey = { key: UUID<Numberish, Numberish>; timestamp: number }; // think about making the key a Symbol
-
 /* ******************************************************************************************************************** */
 
-export const memo_request = async <T>(payload: IRequest, key?: RequestKey['key']) => {
+export const memo_request = async <T>(payload: TRequest, key?: RequestKey['key']) => {
     const response = await request<T>(prepare_request(payload));
 
     if (key) response.key = store_request(payload, key); // if key is provided the payload will be stored
@@ -165,7 +162,7 @@ export const resolve = async <T>(_key: RequestKey) => {
 
 type ProxiedRequest = {
     [Key in HttpMethod]: <T>(
-        payload: IRawRequest & {
+        payload: RawRequest & {
             options?: Key extends IMethods['GET'] ? OmittedBodyAndMethodOptions : OmittedMethodOptions;
         },
         key?: RequestKey['key']
@@ -228,10 +225,10 @@ const entity_to_end_point = (entity: EntityKey | Plurify<EntityKey>) => {
 
 type ProxiedGETRequest = {
     [Key in string]: <T>(
-        payload?: Omit<IRawRequest, 'path'> & { options?: OmittedBodyAndMethodOptions },
+        payload?: Omit<RawRequest, 'path'> & { options?: OmittedBodyAndMethodOptions },
         key?: RequestKey['key']
     ) => Result<T>;
-} & (<T>(payload: IRawRequest & { options?: OmittedBodyAndMethodOptions }, key?: RequestKey['key']) => Result<T>);
+} & (<T>(payload: RawRequest & { options?: OmittedBodyAndMethodOptions }, key?: RequestKey['key']) => Result<T>);
 
 export const get = new Proxy<ProxiedGETRequest>({} as ProxiedGETRequest, {
     get(_, entity: EntityKey | Plurify<EntityKey>) {
@@ -251,10 +248,10 @@ export const get = new Proxy<ProxiedGETRequest>({} as ProxiedGETRequest, {
 
 type ProxiedPOSTRequest = {
     [Key in string]: <T>(
-        payload?: Omit<IRawRequest, 'path'> & { options?: OmittedMethodOptions },
+        payload?: Omit<RawRequest, 'path'> & { options?: OmittedMethodOptions },
         key?: RequestKey['key']
     ) => Result<T>;
-} & (<T>(payload: IRawRequest & { options?: OmittedMethodOptions }, key?: RequestKey['key']) => Result<T>);
+} & (<T>(payload: RawRequest & { options?: OmittedMethodOptions }, key?: RequestKey['key']) => Result<T>);
 
 export const post = new Proxy<ProxiedPOSTRequest>({} as ProxiedPOSTRequest, {
     get(_, entity: EntityKey | Plurify<EntityKey>) {
