@@ -1,12 +1,28 @@
 import { uuidGen } from '~/utils';
-export const createAbortion = (timeout: number) => {
+
+interface AbortionOptions {
+    timeout: number;
+    auto?: boolean;
+    reason?: any;
+}
+
+export const createAbortion = ({ timeout, auto = true, reason }: AbortionOptions) => {
     const controller = new AbortController();
 
-    const id = setTimeout(() => controller.abort(), timeout);
+    let id: NodeJS.Timeout | undefined;
+
+    const kill = (_reason?: any) => controller.abort(_reason ?? reason);
+
+    const schedule = (_timeout?: number, _reason?: any) => {
+        console.log(_timeout, timeout);
+        id = setTimeout(() => kill(_reason ?? reason), _timeout ?? timeout);
+    };
+
+    if (auto) schedule();
 
     const clear = () => clearTimeout(id);
 
-    return { controller, clear };
+    return { controller, clear, schedule, kill };
 };
 
 export const headers = (options?: object) => {
@@ -44,13 +60,11 @@ export const payload_to_query = (payload: Record<string, Numberish | boolean>, i
     return `${query ? init : ''}${query}`;
 };
 
-export const pick = <T extends object, K extends (keyof T)[]>(payload: T, keys: K) => {
-    if (!keys.length) return payload;
-
+export const pick = <T extends object, K extends keyof T>(payload: T, keys: K[]) => {
     return keys.reduce((prev, key) => {
         return {
             ...prev,
             [key]: payload[key],
         };
-    }, {}) as Pick<T, K[number]>;
+    }, {}) as Pick<T, K>;
 };

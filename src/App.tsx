@@ -1,7 +1,8 @@
 import useAsync from './hooks/useAsync';
-import { get } from '~/helpers/requests';
+import { request } from '~/helpers/requests';
 import { useState } from 'react';
 import { formattedJSON } from './utils';
+// import useTimeout from './hooks/useTimeout';
 
 interface User {
     id: number;
@@ -11,16 +12,25 @@ interface User {
     status: string;
 }
 
+// const { exe, cancel } = createRequest<User>({ path: 'users', method: 'GET', params: { name: 'os' } }, ['id']);
+
 const App = () => {
     const [count, setCount] = useState(0);
 
     const { loading, error, value } = useAsync(() => {
-        return get.users<User>({ timeout: 30000, params: { name: 'mod' } });
+        return request<User>({ path: 'users', method: 'GET', params: { name: 'os' } }, ['id', 'name']);
+        // return exe({ timeout: 5000 });
     }, [count]);
+
+    // useTimeout(cancel, 300);
 
     const ping = () => {
         setCount((v) => v + 1);
     };
+
+    if (value?.success) {
+        const {} = value.data;
+    }
 
     return (
         <>

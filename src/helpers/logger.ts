@@ -17,25 +17,25 @@ class Logger {
         if (msg) this.logs.push(msg);
     }
 
-    log<T>(msg: T) {
+    log<T>(...args: T[]) {
         // this.logs.push(msg);
-        console.log(msg);
+        console.log(...args);
     }
 
-    warn<T>(msg: T) {
-        console.warn(msg);
+    warn<T>(...args: T[]) {
+        console.warn(...args);
     }
 
-    error<T>(msg: T) {
-        console.error(msg);
+    error<T>(...args: T[]) {
+        console.error(...args);
     }
 
-    count<T extends string | undefined>(msg?: T) {
-        console.count(msg);
+    count<T extends string | undefined>(...args: T[]) {
+        console.count(...args);
     }
 
-    trace<T extends string | undefined>(msg?: T) {
-        console.trace(msg);
+    trace<T extends string | undefined>(...args: T[]) {
+        console.trace(...args);
     }
 
     logs_count() {
