@@ -68,3 +68,33 @@ export const pick = <T extends object, K extends keyof T>(payload: T, keys: K[])
         };
     }, {}) as Pick<T, K>;
 };
+
+/* ******************************************************************************************************************** */
+
+export function isPlural<T extends string>(word: T) {
+    return word[word.length - 1] === 's';
+}
+
+// prettier-ignore
+export type Plurify<T extends `${string}`> =
+        T extends `${infer F}y`
+        ? `${F}ies`
+        : T extends `${string}s`
+        ? T
+        : `${T}s`; // add what you want depending on your use-case
+
+export function plurify<T extends string>(word: T) {
+    if (isPlural(word)) return word;
+
+    let plural;
+
+    if (!word) plural = 's';
+
+    const _index = word.length - 1;
+    const last_letter = word[_index];
+
+    if (last_letter === 'y') plural = `${word.slice(0, _index)}ies`;
+    else plural = `${word}s`;
+
+    return plural as Plurify<T>;
+}

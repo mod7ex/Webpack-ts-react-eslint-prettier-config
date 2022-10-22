@@ -1,8 +1,7 @@
 import useAsync from './hooks/useAsync';
-import { request } from '~/helpers/requests';
+import { get, post } from '~/helpers/requests';
 import { useState } from 'react';
 import { formattedJSON } from './utils';
-// import useTimeout from './hooks/useTimeout';
 
 interface User {
     id: number;
@@ -12,25 +11,33 @@ interface User {
     status: string;
 }
 
-// const { exe, cancel } = createRequest<User>({ path: 'users', method: 'GET', params: { name: 'os' } }, ['id']);
+interface Admin {
+    id: number;
+    gender: string;
+    status: string;
+}
 
 const App = () => {
     const [count, setCount] = useState(0);
 
-    const { loading, error, value } = useAsync(() => {
-        return request<User>({ path: 'users', method: 'GET', params: { name: 'os' } }, ['id', 'name']);
-        // return exe({ timeout: 5000 });
-    }, [count]);
+    const { loading, error, value } = useAsync(async () => {
+        // const result = await get.user<User>({});
+        const result = await post.cars;
 
-    // useTimeout(cancel, 300);
+        if (result.success) {
+            const {} = result.pick();
+
+            return result.data;
+        }
+    }, [count]);
 
     const ping = () => {
         setCount((v) => v + 1);
     };
 
-    if (value?.success) {
-        const {} = value.data;
-    }
+    // if (value?.success) {
+    //     const {} = value;
+    // }
 
     return (
         <>
