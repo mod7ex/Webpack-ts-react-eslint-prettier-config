@@ -22,7 +22,7 @@ const App = () => {
 
     const { loading, error, value } = useAsync(async () => {
         // const result = await get.user<User>({});
-        const result = await post.cars;
+        const result = await get<Admin>({});
 
         if (result.success) {
             const {} = result.pick();

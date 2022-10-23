@@ -1,5 +1,3 @@
-import { type UUID } from '~/utils';
-import logger from '../logger';
 import {
     createAbortion,
     uuid,
@@ -10,6 +8,8 @@ import {
     plurify,
     type Plurify,
 } from '~/helpers/requests/utils';
+import logger from '../logger';
+import { type UUID } from '~/utils';
 import RequestsMap from '~/helpers/requests/requests-map.json';
 
 /* ******************************************************************************************************************** */
@@ -23,7 +23,10 @@ interface IMethods {
 
 type HttpMethod = IMethods[keyof IMethods];
 
+type PostBasedMethod = Exclude<HttpMethod, IMethods['GET']>;
+
 type RequestKey = { key: UUID<Numberish, Numberish>; timestamp: number }; // think about making the key a Symbol
+// type RequestKey = { key: UUID<Numberish, Numberish>; timestamp: number }; // think about making the key a Symbol
 
 type TData = NonNullable<RequestInit['body']>;
 
@@ -37,13 +40,15 @@ interface IRawRequest<M extends HttpMethod> {
     method?: M;
 }
 
-type RawRequest = IRawRequest<IMethods['GET']> | (IRawRequest<Exclude<HttpMethod, IMethods['GET']>> & { data?: TData });
+type RawRequest = IRawRequest<IMethods['GET']> | (IRawRequest<PostBasedMethod> & { data?: TData });
 
 /* ******************************************************************************************************************** */
 
 enum DEFAULTS {
     BASE_URL = 'https://gorest.co.in/public/v2',
     TIMEOUT = 3000,
+    PATH = '',
+    METHOD = 'GET',
 }
 
 /* ******************************************************************************************************************** */
@@ -67,7 +72,13 @@ export const delete_request = (key: RequestKey) => {
 };
 
 export const prepare_request = (payload?: RawRequest) => {
-    return { base_url: DEFAULTS.BASE_URL, timeout: DEFAULTS.TIMEOUT, ...payload } as RawRequest;
+    return {
+        base_url: DEFAULTS.BASE_URL,
+        timeout: DEFAULTS.TIMEOUT,
+        path: DEFAULTS.PATH,
+        method: DEFAULTS.METHOD,
+        ...payload,
+    } as RawRequest;
 };
 
 /* ******************************************************************************************************************** */
@@ -87,7 +98,6 @@ type Result<T extends Data, E = any> =
     | {
           data: T;
           success: true;
-          message: 'Success !';
           response: Response;
           key?: RequestKey;
       };
@@ -95,7 +105,7 @@ type Result<T extends Data, E = any> =
 export const raw_request = async <T extends Data, E = any>(payload?: RawRequest): Promise<Result<T, E>> => {
     const { method, base_url, path, timeout, params, key, options } = prepare_request(payload);
 
-    const end_point = path_join(base_url!, path ?? '');
+    const end_point = path_join(base_url!, path!);
 
     const query = params ? payload_to_query(params) : '';
 
@@ -119,7 +129,7 @@ export const raw_request = async <T extends Data, E = any>(payload?: RawRequest)
     const _options: RequestInit = {
         // keep same order !
         signal: controller.signal,
-        method: method ?? 'GET',
+        method: method,
         // @ts-ignore
         body: payload?.data,
         ...options,
@@ -138,7 +148,6 @@ export const raw_request = async <T extends Data, E = any>(payload?: RawRequest)
 
         return {
             data,
-            message: 'Success !',
             success: true,
             response,
             key: _key,
@@ -250,26 +259,24 @@ export const resolve = async <T extends Data>(_key: RequestKey, del = true) => {
 
 /* ******************************************************************************************************************** */
 
-type ProxiedPayload<M extends HttpMethod> = Omit<
+type No_Method_ProxiedPayload<M extends HttpMethod> = Omit<
     IRawRequest<M> & (M extends IMethods['GET'] ? unknown : { data?: TData }),
     'method'
 >;
 
 type ProxiedRequest = {
-    [M in HttpMethod]: <T extends Data, E = any>(payload?: ProxiedPayload<M>) => ReturnType<typeof request<T, E>>;
+    [M in HttpMethod]: <T extends Data, E = any>(
+        payload?: No_Method_ProxiedPayload<M>
+    ) => ReturnType<typeof request<T, E>>;
 };
 
-const http_request = <T extends Data, E>(payload: RawRequest, method: HttpMethod) => {
+const method_request = <M extends HttpMethod, T extends Data, E>(method: M, payload?: No_Method_ProxiedPayload<M>) => {
     return request<T, E>({ ...payload, options: { ...payload?.options, method } });
 };
 
 export const http = new Proxy({} as ProxiedRequest, {
     get(_, method: HttpMethod) {
-        // return (payload: any) => {
-        //     return request({ ...payload, options: { ...payload?.options, method } });
-        // };
-
-        return (payload: any) => http_request(payload, method);
+        return (payload: any) => method_request(method, payload);
     },
 });
 
@@ -288,32 +295,27 @@ const entity_to_end_point = (entity: EntityKey) => {
     return end_point as string;
 };
 
-type MethodSpecificProxiedPayload<M extends HttpMethod> = Omit<
-    IRawRequest<M> & (M extends IMethods['GET'] ? unknown : { data?: TData }),
-    'method' | 'path'
->;
+type No_Method_No_Path_ProxiedPayload<M extends HttpMethod> = Omit<No_Method_ProxiedPayload<M>, 'path'>;
 
 type MethodSpecificProxiedRequest = {
     [M in HttpMethod]: <T extends Data, E = any>(
-        payload?: MethodSpecificProxiedPayload<M>
+        payload?: No_Method_No_Path_ProxiedPayload<M>
     ) => ReturnType<typeof request<T, E>>;
 };
 
-// /* ******************************************************************************************************************** */
+/* ******************************************************************************************************************** */
+
+type EntityProxiedMethodRequest<M extends HttpMethod> = {
+    [Key in EntityKey]: MethodSpecificProxiedRequest[M];
+} & ProxiedRequest[M];
 
 // ***************** GET
-
-type ProxiedGETRequest = {
-    [Key in EntityKey]: MethodSpecificProxiedRequest[IMethods['GET']];
-} & ProxiedRequest[IMethods['GET']];
+type ProxiedGETRequest = EntityProxiedMethodRequest<IMethods['GET']>;
 
 // ***************** POST
+type ProxiedPOSTRequest = EntityProxiedMethodRequest<PostBasedMethod>;
 
-type ProxiedPOSTRequest = {
-    [Key in EntityKey]: MethodSpecificProxiedRequest[Exclude<HttpMethod, IMethods['GET']>];
-} & ProxiedRequest[Exclude<HttpMethod, IMethods['GET']>];
-
-// Fix try using this http_request
+// Fix try using this method_request
 const createProxiedMethod = <T extends object>(method: HttpMethod) => {
     return new Proxy({} as T, {
         get(_, entity: EntityKey) {
@@ -339,5 +341,5 @@ export const put = createProxiedMethod<ProxiedPOSTRequest>('PUT');
 export const drop = createProxiedMethod<ProxiedPOSTRequest>('DELETE');
 
 // addEventListener('fetch', (event) => {
-//     console.log(event); // use it to ex: set a token ...
+//     console.log(event); // use it to ex: set a token or...
 // });
