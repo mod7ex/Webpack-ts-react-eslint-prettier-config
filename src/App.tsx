@@ -1,7 +1,7 @@
 import useAsync from './hooks/useAsync';
-import { get, post } from '~/helpers/requests';
+import { http } from '~/helpers/requests';
 import { useState } from 'react';
-import { formattedJSON } from './utils';
+import { formattedJSON, uuidGen } from './utils';
 
 interface User {
     id: number;
@@ -11,33 +11,38 @@ interface User {
     status: string;
 }
 
-interface Admin {
+interface Product {
     id: number;
-    gender: string;
-    status: string;
+    title: string;
+    description: string;
+    price: number;
+    discountPercentage: number;
+    rating: number;
+    stock: number;
+    brand: string;
+    category: string;
+    thumbnail: string;
+    images: string[];
 }
+
+const uuid = uuidGen();
 
 const App = () => {
     const [count, setCount] = useState(0);
 
     const { loading, error, value } = useAsync(async () => {
-        // const result = await get.user<User>({});
-        const result = await get<Admin>({});
+        const result = await http.GET<{ products: Product[] }>();
 
         if (result.success) {
-            const {} = result.pick();
-
-            return result.data;
+            return result.pick(['products']).products.map(({ brand, description }) => ({ brand, description }));
         }
+
+        return result;
     }, [count]);
 
     const ping = () => {
         setCount((v) => v + 1);
     };
-
-    // if (value?.success) {
-    //     const {} = value;
-    // }
 
     return (
         <>

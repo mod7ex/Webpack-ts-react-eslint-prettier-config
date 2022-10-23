@@ -14,7 +14,6 @@ export const createAbortion = ({ timeout, auto = true, reason }: AbortionOptions
     const kill = (_reason?: any) => controller.abort(_reason ?? reason);
 
     const schedule = (_timeout?: number, _reason?: any) => {
-        console.log(_timeout, timeout);
         id = setTimeout(() => kill(_reason ?? reason), _timeout ?? timeout);
     };
 

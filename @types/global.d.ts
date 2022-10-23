@@ -19,6 +19,12 @@ declare global {
         [S in U]: Exclude<U, S> extends never ? [...R, S] : TupleUnion<Exclude<U, S>, [...R, S]>;
     }[U];
 
+    declare type Value<T extends object> = T[keyof T];
+
+    declare type NoneNullableValueKeys<T extends object> = Value<{
+        [K in keyof T]: T[K] extends TEmpty ? never : K;
+    }>;
+
     // **************************************************************************************************** For Test
 
     declare type IsNotAny<T> = 0 extends 1 & T ? false : true;

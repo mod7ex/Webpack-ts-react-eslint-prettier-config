@@ -9,7 +9,7 @@ import {
     type Plurify,
 } from '~/helpers/requests/utils';
 import logger from '../logger';
-import { type UUID } from '~/utils';
+import { cleanShallowCopy } from '~/utils';
 import RequestsMap from '~/helpers/requests/requests-map.json';
 
 /* ******************************************************************************************************************** */
@@ -25,8 +25,8 @@ type HttpMethod = IMethods[keyof IMethods];
 
 type PostBasedMethod = Exclude<HttpMethod, IMethods['GET']>;
 
-type RequestKey = { key: UUID<Numberish, Numberish>; timestamp: number }; // think about making the key a Symbol
-// type RequestKey = { key: UUID<Numberish, Numberish>; timestamp: number }; // think about making the key a Symbol
+type RequestKey = string;
+// type RequestKey = UUID<Numberish, Numberish>;
 
 type TData = NonNullable<RequestInit['body']>;
 
@@ -35,40 +35,62 @@ interface IRawRequest<M extends HttpMethod> {
     path?: string;
     timeout?: number;
     params?: Record<string, Numberish | boolean>;
-    key?: RequestKey['key'];
+    key?: RequestKey;
     options?: RequestInit;
     method?: M;
+    cache?: boolean;
+    remember?: boolean;
 }
 
 type RawRequest = IRawRequest<IMethods['GET']> | (IRawRequest<PostBasedMethod> & { data?: TData });
 
 /* ******************************************************************************************************************** */
 
-enum DEFAULTS {
-    BASE_URL = 'https://gorest.co.in/public/v2',
-    TIMEOUT = 3000,
-    PATH = '',
-    METHOD = 'GET',
-}
+const DEFAULTS = {
+    BASE_URL: 'https://dummyjson.com',
+    TIMEOUT: 3000,
+    PATH: '',
+    METHOD: 'GET',
+    CACHE: true,
+    REMEMBER: false,
+};
 
 /* ******************************************************************************************************************** */
 
-let requestsMap: WeakMap<RequestKey, RawRequest> | undefined; // Key Order
+const RequestKeySymbol = Symbol('the symbol used aside with the pass in string key to index requests in the weak map');
 
-export const store_request = (payload: RawRequest, key: RequestKey['key'] = uuid()) => {
-    const _key = { key, timestamp: Date.now() };
+// type SymbolizedKey = { key: RequestKey; __symbol: typeof RequestKeySymbol };
+type SymbolizedKey = { [K in typeof RequestKeySymbol]: RequestKey };
 
-    (requestsMap ?? (requestsMap = new Map())).set(_key, payload);
+let requestsMap: WeakMap<SymbolizedKey, RawRequest> | undefined; // Key Order
+
+export let keysMap: Map<RequestKey, SymbolizedKey> | undefined;
+
+const symbolizedKey = (key: RequestKey, store = true) => {
+    const _key = { [RequestKeySymbol]: key };
+    if (store) (keysMap ?? (keysMap = new Map())).set(key, _key);
+    return _key;
+};
+
+export const store_request = (payload: RawRequest, key: RequestKey = uuid()) => {
+    const _key = symbolizedKey(key);
+
+    delete payload.key;
+    delete payload.options?.signal;
+
+    (requestsMap ?? (requestsMap = new WeakMap())).set(_key, payload);
 
     return _key;
 };
 
 export const get_request = (key: RequestKey) => {
-    return requestsMap?.get(key);
+    const _key = keysMap?.get(key);
+
+    return _key && requestsMap?.get(_key);
 };
 
 export const delete_request = (key: RequestKey) => {
-    return requestsMap?.delete(key) ?? false;
+    return keysMap?.delete(key) ?? false;
 };
 
 export const prepare_request = (payload?: RawRequest) => {
@@ -77,8 +99,30 @@ export const prepare_request = (payload?: RawRequest) => {
         timeout: DEFAULTS.TIMEOUT,
         path: DEFAULTS.PATH,
         method: DEFAULTS.METHOD,
+        cache: DEFAULTS.CACHE,
+        remember: DEFAULTS.REMEMBER,
         ...payload,
     } as RawRequest;
+};
+
+/* ******************************************************************************************************************** */
+
+let cacheMap: Map<RequestKey, { timestamp: number; response: Response }> | undefined;
+
+export const cacheResponse = (key: RequestKey, response: Response) => {
+    (cacheMap ?? (cacheMap = new Map())).set(key, { timestamp: Date.now(), response });
+};
+
+export const clearCachedResponse = (key: RequestKey) => {
+    cacheMap?.delete(key) ?? false;
+};
+
+export const getCachedResponse = (key: RequestKey) => {
+    return cacheMap?.get(key);
+};
+
+export const clearCache = () => {
+    cacheMap?.clear();
 };
 
 /* ******************************************************************************************************************** */
@@ -91,6 +135,25 @@ export const prepare_request = (payload?: RawRequest) => {
  *
  */
 
+const checkResponse = (response: Response) => {
+    // console.log(response);
+
+    // the PHP be-like
+
+    if (!response.ok) {
+        if (response.status === 404) throw new TypeError('Page not found');
+        throw new TypeError('Network response was not OK');
+    }
+};
+
+const errMsg = (err: any) => {
+    // console.log(typeof err);
+
+    if (err?.name == 'AbortError') return 'Request timeout passed so aborted';
+
+    return err?.message ?? 'Something went wrong';
+};
+
 type Data = Record<string, any>;
 
 type Result<T extends Data, E = any> =
@@ -102,8 +165,43 @@ type Result<T extends Data, E = any> =
           key?: RequestKey;
       };
 
+const responseToSuccessResult = async <T extends Data>(response: Response, key: RequestKey | undefined) => {
+    const data = <T>await response.json();
+
+    return {
+        data,
+        success: true,
+        response,
+        key,
+    } as const;
+};
+
+const CACHE_TTL = 1000 * 60 * 60; // 1h
+
+/**
+ *
+ * - by default the cache is on
+ */
 export const raw_request = async <T extends Data, E = any>(payload?: RawRequest): Promise<Result<T, E>> => {
-    const { method, base_url, path, timeout, params, key, options } = prepare_request(payload);
+    const { method, base_url, path, timeout, params, key: _key, options, cache, remember } = prepare_request(payload);
+
+    // generate a random key in case of a none-provided key beside the wish of remembering the request or caching the response
+    const key = (cache || remember) && !_key ? uuid() : _key;
+
+    if (key) {
+        const cached_response = getCachedResponse(key);
+
+        if (cached_response) {
+            if (Date.now() - cached_response.timestamp < CACHE_TTL)
+                // cache is still valide
+                return responseToSuccessResult<T>(cached_response.response, key);
+            else {
+                clearCachedResponse(key); // the key existed for more than an hour
+            }
+        }
+    }
+
+    if (remember) store_request(payload!, key);
 
     const end_point = path_join(base_url!, path!);
 
@@ -113,13 +211,6 @@ export const raw_request = async <T extends Data, E = any>(payload?: RawRequest)
         timeout: timeout!,
         reason: 'Request timeout exceeded',
     });
-
-    let _key;
-
-    if (key) {
-        // store the original payload
-        _key = store_request(payload!);
-    }
 
     const headers = {
         ...default_headers(options),
@@ -139,25 +230,15 @@ export const raw_request = async <T extends Data, E = any>(payload?: RawRequest)
     try {
         const response = await fetch(end_point + query, _options);
 
-        if (!response.ok) throw new TypeError('Network response was not OK');
+        checkResponse(response);
 
-        const data = <T>await response.json();
+        if (cache) cacheResponse(key!, response);
 
-        // logger.log(response);
-        logger.log(data);
-
-        return {
-            data,
-            success: true,
-            response,
-            key: _key,
-        };
-    } catch (err: any) {
-        const error = err;
-
+        return responseToSuccessResult<T>(response, key);
+    } catch (error: any) {
         logger.error('[request error]: ', error);
 
-        return { error, message: error?.message ?? 'Something went wrong', success: false, key: _key };
+        return { error, message: errMsg(error), success: false, key };
     } finally {
         clear();
     }
@@ -189,7 +270,7 @@ export const request = async <T extends Data, E = any>(payload?: RawRequest) => 
 
 export const createRequest = <T extends Data | undefined = undefined, E = undefined>(payload?: RawRequest) => {
     const { controller, clear, schedule, kill } = createAbortion({
-        timeout: payload?.timeout ?? (DEFAULTS.TIMEOUT as number),
+        timeout: payload?.timeout ?? DEFAULTS.TIMEOUT,
         auto: false,
     });
 
@@ -214,7 +295,7 @@ export const createRequest = <T extends Data | undefined = undefined, E = undefi
             ..._rest
         } = _payload ?? {};
 
-        const __payload = {
+        const __payload = cleanShallowCopy({
             key: _key ?? key,
             path: _path ?? path,
             timeout: _timeout ?? timeout,
@@ -228,9 +309,9 @@ export const createRequest = <T extends Data | undefined = undefined, E = undefi
                 ..._options,
                 signal: controller.signal,
             },
-        };
+        });
 
-        schedule(__payload.timeout, 'Request timeout exceeded');
+        schedule(__payload.timeout ?? DEFAULTS.TIMEOUT, 'Request timeout exceeded');
 
         return request<RType, RErr>(__payload);
     };
@@ -244,37 +325,51 @@ export const createRequest = <T extends Data | undefined = undefined, E = undefi
 };
 
 /* ******************************************************************************************************************** */
-
-export const resolve = async <T extends Data>(_key: RequestKey, del = true) => {
-    const payload = get_request(_key);
+/**
+ *
+ * @param payload
+ * -- { key: RequestKey; del: 0 | 1 | 2 }
+ * - request identifier key
+ * - del 0, 1, 2 (0: don't delete, 1: delete if request is success, 2: delete anyway)
+ * - by default del is 0
+ */
+export const resolve = async <T extends Data>({ key, del = 0 }: { key: RequestKey; del?: 0 | 1 | 2 }) => {
+    // try later to add an option payload
+    const payload = get_request(key);
 
     if (!payload) return;
 
     const response = await request<T>(payload);
 
-    if (response.success && del) delete_request(_key);
+    if (del) {
+        if (del & 1) response.success && delete_request(key);
+        else delete_request(key);
+    }
 
     return response;
 };
 
 /* ******************************************************************************************************************** */
 
-type No_Method_ProxiedPayload<M extends HttpMethod> = Omit<
+type Omitted_Method_Payload<M extends HttpMethod> = Omit<
     IRawRequest<M> & (M extends IMethods['GET'] ? unknown : { data?: TData }),
     'method'
 >;
 
-type ProxiedRequest = {
+type MethodRequest = {
     [M in HttpMethod]: <T extends Data, E = any>(
-        payload?: No_Method_ProxiedPayload<M>
+        payload?: Omitted_Method_Payload<M>
     ) => ReturnType<typeof request<T, E>>;
 };
 
-const method_request = <M extends HttpMethod, T extends Data, E>(method: M, payload?: No_Method_ProxiedPayload<M>) => {
+const method_request = <M extends HttpMethod, T extends Data, E>(
+    method: M = DEFAULTS.METHOD as M,
+    payload?: Omitted_Method_Payload<M>
+) => {
     return request<T, E>({ ...payload, options: { ...payload?.options, method } });
 };
 
-export const http = new Proxy({} as ProxiedRequest, {
+export const http = new Proxy({} as MethodRequest, {
     get(_, method: HttpMethod) {
         return (payload: any) => method_request(method, payload);
     },
@@ -284,10 +379,10 @@ export const http = new Proxy({} as ProxiedRequest, {
 
 // Here is the thing y'all
 
-type EntityKey = keyof typeof RequestsMap | Plurify<keyof typeof RequestsMap>;
+type TEntity = keyof typeof RequestsMap | Plurify<keyof typeof RequestsMap>;
 
 // Fix --> string
-const entity_to_end_point = (entity: EntityKey) => {
+const entity_to_end_point = (entity: TEntity) => {
     let end_point = Reflect.get(RequestsMap, entity); // put the url in the Map in case of complicated ones
 
     if (!end_point) end_point = plurify(entity); // otherwise we will just plurify what you provided (entity) & use it as end_point
@@ -295,30 +390,30 @@ const entity_to_end_point = (entity: EntityKey) => {
     return end_point as string;
 };
 
-type No_Method_No_Path_ProxiedPayload<M extends HttpMethod> = Omit<No_Method_ProxiedPayload<M>, 'path'>;
+type Omitted_Method_And_Path_Payload<M extends HttpMethod> = Omit<Omitted_Method_Payload<M>, 'path'>;
 
-type MethodSpecificProxiedRequest = {
+type MethodRequestMap = {
     [M in HttpMethod]: <T extends Data, E = any>(
-        payload?: No_Method_No_Path_ProxiedPayload<M>
+        payload?: Omitted_Method_And_Path_Payload<M>
     ) => ReturnType<typeof request<T, E>>;
 };
 
 /* ******************************************************************************************************************** */
 
-type EntityProxiedMethodRequest<M extends HttpMethod> = {
-    [Key in EntityKey]: MethodSpecificProxiedRequest[M];
-} & ProxiedRequest[M];
+type EntityMethodRequestMap<M extends HttpMethod> = {
+    [Key in TEntity]: MethodRequestMap[M];
+} & MethodRequest[M];
 
 // ***************** GET
-type ProxiedGETRequest = EntityProxiedMethodRequest<IMethods['GET']>;
+type EntityGETRequest = EntityMethodRequestMap<IMethods['GET']>;
 
 // ***************** POST
-type ProxiedPOSTRequest = EntityProxiedMethodRequest<PostBasedMethod>;
+type EntitydPOSTRequest = EntityMethodRequestMap<PostBasedMethod>;
 
 // Fix try using this method_request
 const createProxiedMethod = <T extends object>(method: HttpMethod) => {
     return new Proxy({} as T, {
-        get(_, entity: EntityKey) {
+        get(_, entity: TEntity) {
             return async (payload: any) => {
                 const path = entity_to_end_point(entity);
 
@@ -332,13 +427,13 @@ const createProxiedMethod = <T extends object>(method: HttpMethod) => {
     });
 };
 
-export const get = createProxiedMethod<ProxiedGETRequest>('GET');
+export const get = createProxiedMethod<EntityGETRequest>('GET');
 
-export const post = createProxiedMethod<ProxiedPOSTRequest>('POST');
+export const post = createProxiedMethod<EntitydPOSTRequest>('POST');
 
-export const put = createProxiedMethod<ProxiedPOSTRequest>('PUT');
+export const put = createProxiedMethod<EntitydPOSTRequest>('PUT');
 
-export const drop = createProxiedMethod<ProxiedPOSTRequest>('DELETE');
+export const drop = createProxiedMethod<EntitydPOSTRequest>('DELETE');
 
 // addEventListener('fetch', (event) => {
 //     console.log(event); // use it to ex: set a token or...

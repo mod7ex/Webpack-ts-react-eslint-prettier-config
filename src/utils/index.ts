@@ -34,4 +34,14 @@ export const formattedJSON = (v: any) => {
     return JSON.stringify(v, null, 4);
 };
 
+export const cleanShallowCopy = <T extends Record<string, any>>(target: T) => {
+    return Object.entries(target).reduce((prev, [key, value]) => {
+        if (value == null) return prev;
+        return {
+            ...prev,
+            [key]: value,
+        };
+    }, {}) as Pick<T, NoneNullableValueKeys<T>>;
+};
+
 // const importView = (subreddit: string) => lazy(() => import(`./views/${subreddit}View`).catch(() => import(`./views/NullView`)));
