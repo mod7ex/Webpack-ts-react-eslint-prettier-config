@@ -53,6 +53,7 @@ const DEFAULTS = {
     METHOD: 'GET',
     CACHE: true,
     REMEMBER: false,
+    CACHE_TTL: 1000 * 60 * 60, // 1h,
 };
 
 /* ******************************************************************************************************************** */
@@ -75,8 +76,8 @@ const symbolizedKey = (key: RequestKey, store = true) => {
 export const store_request = (payload: RawRequest, key: RequestKey = uuid()) => {
     const _key = symbolizedKey(key);
 
-    delete payload.key;
     delete payload.options?.signal;
+    delete payload.remember; // so that it won't be stored again on a later request
 
     (requestsMap ?? (requestsMap = new WeakMap())).set(_key, payload);
 
@@ -154,17 +155,6 @@ const errMsg = (err: any) => {
     return err?.message ?? 'Something went wrong';
 };
 
-type Data = Record<string, any>;
-
-type Result<T extends Data, E = any> =
-    | { success: false; error: E; message: string; key?: RequestKey }
-    | {
-          data: T;
-          success: true;
-          response: Response;
-          key?: RequestKey;
-      };
-
 const responseToSuccessResult = async <T extends Data>(response: Response, key: RequestKey | undefined) => {
     const data = <T>await response.json();
 
@@ -176,7 +166,16 @@ const responseToSuccessResult = async <T extends Data>(response: Response, key: 
     } as const;
 };
 
-const CACHE_TTL = 1000 * 60 * 60; // 1h
+type Data = Record<string, any>;
+
+type Result<T extends Data, E = any> =
+    | { success: false; error: E; message: string; key?: RequestKey }
+    | {
+          data: T;
+          success: true;
+          response: Response;
+          key?: RequestKey;
+      };
 
 /**
  *
@@ -185,21 +184,21 @@ const CACHE_TTL = 1000 * 60 * 60; // 1h
 export const raw_request = async <T extends Data, E = any>(payload?: RawRequest): Promise<Result<T, E>> => {
     const { method, base_url, path, timeout, params, key: _key, options, cache, remember } = prepare_request(payload);
 
-    // generate a random key in case of a none-provided key beside the wish of remembering the request or caching the response
-    const key = (cache || remember) && !_key ? uuid() : _key;
-
-    if (key) {
-        const cached_response = getCachedResponse(key);
+    if (_key) {
+        const cached_response = getCachedResponse(_key);
 
         if (cached_response) {
-            if (Date.now() - cached_response.timestamp < CACHE_TTL)
+            if (Date.now() - cached_response.timestamp < DEFAULTS.CACHE_TTL)
                 // cache is still valide
-                return responseToSuccessResult<T>(cached_response.response, key);
+                return responseToSuccessResult<T>(cached_response.response, _key);
             else {
-                clearCachedResponse(key); // the key existed for more than an hour
+                clearCachedResponse(_key); // the key existed for more than an hour
             }
         }
     }
+
+    // generate a random key in case of a none-provided key beside the wish of remembering the request or caching the response
+    const key = (cache || remember) && !_key ? uuid() : _key;
 
     if (remember) store_request(payload!, key);
 
@@ -232,6 +231,7 @@ export const raw_request = async <T extends Data, E = any>(payload?: RawRequest)
 
         checkResponse(response);
 
+        // cache only on a success response
         if (cache) cacheResponse(key!, response);
 
         return responseToSuccessResult<T>(response, key);
