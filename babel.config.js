@@ -2,7 +2,7 @@ module.exports = function (api) {
     // no need to re-evaluate this function every time webpack re-compiles a file, so cache out the result
     const IS_DEV = api.env('development');
 
-    api.cache.using(() => IS_DEV === 'development');
+    api.cache.using(() => IS_DEV);
 
     /**
      * for the plugin react-refresh/babel
