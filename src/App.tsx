@@ -1,5 +1,5 @@
 import useAsync from './hooks/useAsync';
-import { http } from '~/helpers/requests';
+import { http } from '~/requests';
 import { useState } from 'react';
 import { formattedJSON, uuidGen } from './utils';
 

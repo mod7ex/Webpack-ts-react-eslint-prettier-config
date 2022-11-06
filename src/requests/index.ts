@@ -7,8 +7,8 @@ import {
     pick,
     plurify,
     type Plurify,
-} from '~/helpers/requests/utils';
-import logger from '../logger';
+} from '~/requests/utils';
+import logger from '../helpers/logger';
 import { cleanShallowCopy } from '~/utils';
 import RequestsMap from '~/helpers/requests/requests-map.json';
 
