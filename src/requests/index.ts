@@ -10,7 +10,7 @@ import {
 } from '~/requests/utils';
 import logger from '../helpers/logger';
 import { cleanShallowCopy } from '~/utils';
-import RequestsMap from '~/helpers/requests/requests-map.json';
+import RequestsMap from '~/requests/requests-map.json';
 
 /* ******************************************************************************************************************** */
 
