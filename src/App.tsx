@@ -1,7 +1,7 @@
 import useAsync from './hooks/useAsync';
-import { http } from '~/requests';
 import { useState } from 'react';
-import { formattedJSON, uuidGen } from './utils';
+import { formattedJSON } from './utils';
+import { GET_USERS, query } from '~/requests/query';
 
 interface User {
     id: number;
@@ -25,19 +25,11 @@ interface Product {
     images: string[];
 }
 
-const uuid = uuidGen();
-
 const App = () => {
     const [count, setCount] = useState(0);
 
     const { loading, error, value } = useAsync(async () => {
-        const result = await http.GET<{ products: Product[] }>();
-
-        if (result.success) {
-            return result.pick(['products']).products.map(({ brand, description }) => ({ brand, description }));
-        }
-
-        return result;
+        return query(GET_USERS, { params: { user_id: 22 } });
     }, [count]);
 
     const ping = () => {

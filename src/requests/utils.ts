@@ -33,7 +33,7 @@ export const headers = (options?: object) => {
 
 export const uuid = uuidGen('request');
 
-const trim_slash = (str: string): string => {
+export const trim_slash = (str: string): string => {
     const len = str.length;
 
     if (str.startsWith('/')) return trim_slash(str.slice(1, len));
